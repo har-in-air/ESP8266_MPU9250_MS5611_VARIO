@@ -149,8 +149,17 @@ void setup() {
 		audio.IndicateFault(200);
 		abort();
 		}
-	imu.ConfigGyroAccel(AFS_2G, GFS_250DPS);
-
+	imu.ConfigAccelGyro();
+	delay(3000); // allow time for unit to be left at rest so gyro can be calibrated
+#ifdef IMU_CALIBRATE	
+    // to calibrate the accelerometer, the sensor board needs to be flat, with the MPU9250 +z axis
+	// pointing up.
+	imu.CalibrateAccel(50);
+#endif
+	// try to calibrate gyro each time on power up. if the unit is not at rest, give up
+	// and use the default offsets that were computed offline.
+	Serial.printf("Calibrating gyro\r\n");
+	imu.CalibrateGyro(50);
 	baro.Reset();
 	delay(100);
 	baro.Config();

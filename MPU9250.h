@@ -141,7 +141,7 @@
 
 
 #define MPU9250_2G_SENSITIVITY 		16.384f 	// lsb per mg
-#define MPU9250_250DPS_SENSITIVITY	131.0f 		// lsb per dps
+#define MPU9250_500DPS_SENSITIVITY	62.5f 		// lsb per dps
 
 enum Ascale    {
   AFS_2G = 0,
@@ -180,11 +180,12 @@ class MPU9250 {
 	float gScale_;
 	
     MPU9250();
-	int CheckID();
+	int CheckID(void);
 	void GetAccelGyroData(float* pAccelData, float* pGyroData);
-    void ConfigGyroAccel(int aFS, int gFS);
-    void CalibrateGyroAccel();
-	void Sleep();
+    void ConfigAccelGyro(void);
+    void CalibrateGyro(int numSamples);
+    void CalibrateAccel(int numSamples);
+	void Sleep(void);
     void WriteByte(uint8_t deviceID, uint8_t addr, uint8_t val);
     uint8_t ReadByte(uint8_t deviceID, uint8_t addr);
     int ReadBytes(uint8_t deviceID, uint8_t addr, uint8_t numBytes, uint8_t *pBuf);

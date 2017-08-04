@@ -2,10 +2,6 @@
 #define VARIO_AUDIO_H_
 
 
-#define CLMP(x,mn,mx)       {if (x <= (mn)) x = (mn); else if (x >= (mx)) x = (mx);}
-#define ABSOL(x)            ((x) < 0 ? -(x) : (x))
-
-
 // climb audio beep period and "duty cycle"
 typedef struct BEEP_ {
     int periodTicks;

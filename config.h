@@ -9,5 +9,6 @@
 #define SLEEP_THRESHOLD_CPS		50
 
 #define IMU_DEBUG
+//#define IMU_CALIBRATE
 
 #endif

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "VarioAudio.h"
+#include "util.h"
 
 
 
@@ -23,7 +24,7 @@ void VarioAudio::VarioBeep(int32_t nCps) {
 
    if (
             (beepPeriodTicks_ <= 0) 
-       ||   ((tick_ >= beepPeriodTicks_/2) && (ABSOL(nCps - varioCps_) > discrimThreshold_))
+       ||   ((tick_ >= beepPeriodTicks_/2) && (ABS(nCps - varioCps_) > discrimThreshold_))
        ||   ((nCps >= climbToneCps_) && (varioCps_ < climbToneCps_)) 
        ||   ((nCps >= liftyAirToneCps_) && (varioCps_ < liftyAirToneCps_)) 
        ) {
@@ -47,7 +48,7 @@ void VarioAudio::VarioBeep(int32_t nCps) {
             beepPeriodTicks_ = 20;
             beepEndTick_  = 18;
             newFreqHz = VARIO_SINK_FREQHZ + ((sinkToneCps_ - beepCps_)*(VARIO_MAX_FREQHZ - VARIO_SINK_FREQHZ))/(VARIO_MAX_CPS+ sinkToneCps_);
-            CLMP(newFreqHz,VARIO_MIN_FREQHZ,VARIO_MAX_FREQHZ);
+            CLAMP(newFreqHz,VARIO_MIN_FREQHZ,VARIO_MAX_FREQHZ);
             freqHz_ = newFreqHz;
             SetFrequency(freqHz_);
          	}
@@ -79,7 +80,7 @@ void VarioAudio::VarioBeep(int32_t nCps) {
                 else {
                     newFreqHz = VARIO_MIN_FREQHZ + (beepCps_*(VARIO_XOVER_FREQHZ - VARIO_MIN_FREQHZ))/VARIO_XOVER_CPS;
                     }
-                CLMP(newFreqHz,VARIO_MIN_FREQHZ,VARIO_MAX_FREQHZ);
+                CLAMP(newFreqHz,VARIO_MIN_FREQHZ,VARIO_MAX_FREQHZ);
                 freqHz_ = newFreqHz;
                 SetFrequency(freqHz_);
                 }
@@ -92,7 +93,7 @@ void VarioAudio::VarioBeep(int32_t nCps) {
     		beepPeriodTicks_ = 30;
     		beepEndTick_ = 2;
     		newFreqHz = VARIO_TICK_FREQHZ + (beepCps_*(VARIO_XOVER_FREQHZ - VARIO_TICK_FREQHZ))/VARIO_XOVER_CPS;
-            CLMP(newFreqHz,VARIO_TICK_FREQHZ,VARIO_MAX_FREQHZ);
+            CLAMP(newFreqHz,VARIO_TICK_FREQHZ,VARIO_MAX_FREQHZ);
             freqHz_ = newFreqHz;
     		SetFrequency(freqHz_);  // higher frequency as you approach climb threshold
             }
@@ -136,8 +137,8 @@ void VarioAudio::VarioBeep(int32_t nCps) {
 
 void VarioAudio::SetFrequency(int32_t fHz) {
 	if (fHz ) {
-		analogWrite(pinPWM_, 512);
 		analogWriteFreq(fHz);
+		analogWrite(pinPWM_, 512);
 		}
 	else {
 		analogWrite(pinPWM_, 0);
