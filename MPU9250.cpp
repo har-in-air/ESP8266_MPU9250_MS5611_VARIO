@@ -93,15 +93,12 @@ void MPU9250::ConfigAccelGyro(void) {
 
 
 // place unit so that the sensor board accelerometer +ve z axis points 
-// downwards. VERY SLOWLY rock the board by a couple of degrees in  
-// all directions so we can find the orientation where the az value is
-// highest. This is where the sensor z axis is experiencing a static 
+// vertically downwards. This is where the sensor z axis is experiencing a static 
 // acceleration of 1g. In this orientation the ax and ay values are 
 // the offsets for a 0g environment. 
-// Repeat this calibration a few times to check the consistency of 
-// the calibration offsets, as you may have inadvertently jerked the 
-// board slightly. The board MUST be in a 1g static acceleration 
-// environment for this calibration.
+// Repeat this calibration a few times with the debug serial monitor to check the 
+// consistency of the calibration offsets. The board MUST be in a 1g static acceleration 
+// environment for this calibration, i.e. at rest, no vibrations etc.
 
 #define ACCEL_NUM_AVG_SAMPLES	10
 #define ACCEL_NUM_CALIB_TRIES	200
