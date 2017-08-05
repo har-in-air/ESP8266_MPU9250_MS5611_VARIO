@@ -39,18 +39,13 @@ void KalmanVario::Config(float zVariance, float zAccelVariance, float zAccelBias
 
 // Updates state [Z, V] given a sensor measurement of z, acceleration a, 
 // and the time in seconds dt since the last measurement. 
-// 19uS on Navspark-GL breakoutboard, Sparc core running @81.84MHz	
+
 void KalmanVario::Update(float z, float a, float dt, float* pZ, float* pV) {
 
 	// Predict state
     float accel = a - aBias_;
 	v_ += accel * dt;
 	z_ += v_ * dt;
-
-    // when zAccelVariance is large, filter favours fresh data.
-    // when small, filter favours existing state.
-    //zAccelVariance_ = fabs(accel)/50.0f;
-    // CLAMP(zAccelVariance_, 1.0f, 50.0f);
 
     // Predict State Covariance matrix
 	float t00,t01,t02;
