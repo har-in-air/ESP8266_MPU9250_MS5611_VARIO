@@ -122,10 +122,12 @@ void setup() {
 	Serial.printf("battery voltage = %d.%dV\r\n", bv/10, bv%10 );
 	audio_indicateBatteryVoltage(bv);
 
+	// read calibration parameters from EEPROM
     nvd_Init();
 	if (nvd.axBias == 0 && nvd.ayBias == 0 && nvd.azBias == 0) {
-		audio.IndicateFault(3000);
+		audio.IndicateFault(3000); // if accelerometer isn't calibrated, indicate with fault
 		}
+	// use the saved calibration parameters	
 	imu.SetCalibrationParams(&nvd);
 	
 	drdyCounter = 0;
@@ -139,10 +141,19 @@ void setup() {
 		audio.IndicateFault(200);
 		powerDown();
 		}
+	// set up MPU9250 to start generating gyro and accel data at 200Hz ODR	
 	imu.ConfigAccelGyro();
+	
 	// try to calibrate gyro each time on power up. if the unit is not at rest, give up
-	// and use the last saved gyro offsets
-	// allow a few seconds for unit to be left undisturbed so gyro can be calibrated
+	// and use the last saved gyro biases.
+	// allow a few seconds for unit to be left undisturbed so gyro can be calibrated,
+	// this delay is indicated with a series of 10 beeps. During this time if you press and hold the
+	// flash button (GPIO0), the unit will set up for both accelerometer and gyro 
+	// calibration. As soon as you hear the long confirmation tone, release the flash
+	// button and put the unit in calibration position resting undisturbed on a horizontal surface 
+	// with the accelerometer +z axis pointing vertically downwards. You will have some time 
+	// to do this, indicated by a series of beeps. After calibration, the unit will generate another 
+	// tone, save the calibration parameters to flash, and continue with normal vario operation
 	pinMode(pinBtn, INPUT);
 	int bCalibrateAccelerometer = 0;
 	for (int inx = 0; inx < 10; inx++) {
@@ -157,17 +168,21 @@ void setup() {
 			}
 		}
 	if (bCalibrateAccelerometer) {	
+		// confirm button press with long tone
 		audio.GenerateTone(1000, 3000);
 		// allow time for the unit to be placed in calibration position with the accelerometer +z pointing downwards
+		// indicate this delay with a series of short beeps
 		for (int inx = 0; inx < 50; inx++) {
 			delay(200); 
 			audio.GenerateTone(800,50);
 			}
-		Serial.printf("Calibrating accel & gyro\r\n");
+		Serial.printf("Now calibrating accel & gyro\r\n");
 		imu.CalibrateAccel();
 		imu.CalibrateGyro();
 		nvd_SaveCalibrationParams(imu.axBias_,imu.ayBias_,imu.azBias_,imu.gxBias_,imu.gyBias_,imu.gzBias_,NVD_CALIBRATED);
 		}
+	// normal flow, attempt to calibrate gyro each time. If calibration isn't possible because the unit is in motion,
+	// use the last saved gyro biases
 	imu.CalibrateGyro();
 	// indicate calibration complete
 	audio.GenerateTone(800, 1000);
