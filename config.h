@@ -8,7 +8,7 @@
 #define SLEEP_TIMEOUT_SECONDS   1200 // 20 minutes
 #define SLEEP_THRESHOLD_CPS		50
 
-#define IMU_DEBUG
-//#define IMU_CALIBRATE
+//#define IMU_DEBUG
+//#define IMU_CALIBRATE_ACCELEROMETER
 
 #endif
