@@ -1,7 +1,15 @@
 # ESP8266_MPU9250_MS5611_VARIO
-DIY friendly, cheap, accurate, fast responding audio variometer using easily available modules
+Features :
+1. uses earthframe-z acceleration computed from MPU9250 data, and z altitude calculated from MS5611 barometric pressure, for a "zero-lag" variometer response
+2. lifty air beeps, for climbrates from +5cm/sec to +50cm/sec, indicated with short pulses and longer intervals.
+3. climbtone beeps, for climbrates > +0.5m/s, indicated with longer beeps and shorter intervals.
+4. sinktone generated for sinkrate < - 2.5m/s, indicated with continuous tones
+5. offscale tones generated for climbrates > +10m/s or sinkrates < -10m/s
+6. vario will automatically go into a low-power drain state if there is no vertical motion for 20minutes. This is in case you forgot to power off your vario after landing. Power off and on again to recover from this state.
+7. easy to assemble using widely available, off-the-shelf modules
+8. cheap !! Takes advantage of the popularity of the modules used in this project - you can source them for just a few $ (worldwide shipping included) on ebay and aliexpress.
 
-Software development platform used : Arduino 1.8.2 on Windows 10 x64
+Software development platform used : Arduino 1.8.2 on Windows 10 x64. See https://github.com/esp8266/Arduino for instructions on how to install ESP8266 libraries.
 
 ESP8285  ESP-M2 module purchased from Aliexpress for US$1.80 including shipping. It was advertised as an ESP-M1 with 16Mbit flash, but the silkscreen on the back of the board shows ESP-M2, and the ESP8285 has an 8Mbit on-chip flash. You can use any ESP8266 module that brings out the gpio pins that are used in this project. I used an ESP8285 because it is literally thumbnail sized - an ESP8266 module would not have fit in the small plastic case I used for the project. If you do use ESP8266 instead of ESP8285, select "Generic ESP8266 module" for Arduino board type. If you decide to use a development board like the Wemos D1 or Nodemcu, bear in mind that the onboard USB-UART interface will draw current all the time, so the auto-power down feature will be compromised, as will the active power consumption.  I measured ~26mA current draw in active vario mode with the ESP8285 configured for 80MHz clock. 
 
