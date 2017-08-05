@@ -3,7 +3,7 @@
 #include "nvd.h"
 #include "util.h"
 
-int gbNvdChange;
+
 NVD_PARAMS nvd;
 
 void nvd_Init(void)   {
@@ -13,11 +13,8 @@ void nvd_Init(void)   {
 	for (int inx = 0; inx < NVD_SIZE_BYTES; inx++) {
 		pBuf[inx] = EEPROM.read(inx);
 		}
-	checkSum = 0;
-	for (int inx = 0; inx < NVD_SIZE_BYTES-2; inx++) {
-		checkSum += (uint16_t)pBuf[inx]; 
-		}
-	Serial.printf("checkSum = 0x%04x\r\n", checkSum);	
+	checkSum = nvd_CheckSum();
+	Serial.printf("Calculated checkSum = 0x%04x\r\n", checkSum);	
 	Serial.printf("Stored checkSum = 0x%04x\r\n", nvd.checkSum);
 	
     if ((checkSum ^ nvd.checkSum) == 0xFFFF) {
@@ -39,10 +36,7 @@ void nvd_Init(void)   {
 		nvd.gyBias = 0;
 		nvd.gzBias = 0;
 		nvd.calibrated = 0;
-		checkSum = 0;
-		for (int inx = 0; inx < NVD_SIZE_BYTES-2; inx++) {
-			checkSum += (uint16_t)pBuf[inx]; 
-			}
+		checkSum = nvd_CheckSum();
 		nvd.checkSum = ~checkSum;
 	    for  (int inx = 0; inx < NVD_SIZE_BYTES; inx++){
 			EEPROM.write(inx, pBuf[inx]);
@@ -51,6 +45,16 @@ void nvd_Init(void)   {
 		}
    EEPROM.end();
    }
+
+uint16_t nvd_CheckSum(void) {
+	uint8_t* pBuf = (uint8_t*)&nvd;
+	uint16_t checkSum = 0;
+	for (int inx = 0; inx < NVD_SIZE_BYTES-2; inx++) {
+		checkSum += (uint16_t)pBuf[inx]; 
+		}
+	return checkSum;
+	}
+	
 
 void nvd_SaveCalibrationParams(int16_t axb, int16_t ayb, int16_t azb, int16_t gxb, int16_t gyb, int16_t gzb, int16_t calibrated) {
 	EEPROM.begin(NVD_SIZE_BYTES);
@@ -61,12 +65,9 @@ void nvd_SaveCalibrationParams(int16_t axb, int16_t ayb, int16_t azb, int16_t gx
 	nvd.gyBias = gyb;
 	nvd.gzBias = gzb;
 	nvd.calibrated = calibrated;
-	uint16_t checkSum = 0;
-	uint8_t* pBuf = (uint8_t*) &nvd;
-	for (int inx = 0; inx < NVD_SIZE_BYTES-2; inx++) {
-		checkSum += (uint16_t)pBuf[inx]; 
-		}
+	uint16_t checkSum = nvd_CheckSum();
 	nvd.checkSum = ~checkSum;
+	uint8_t* pBuf = (uint8_t*) &nvd;
 	for  (int inx = 0; inx < NVD_SIZE_BYTES; inx++){
 		EEPROM.write(inx, pBuf[inx]);
 		}
