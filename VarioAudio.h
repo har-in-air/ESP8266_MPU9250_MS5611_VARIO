@@ -31,7 +31,7 @@ typedef struct BEEP_ {
 
 #define CLIMB_THRESHOLD     50
 #define ZERO_THRESHOLD	    5
-#define SINK_THRESHOLD      -100
+#define SINK_THRESHOLD      -250
 
 class VarioAudio {
 	
