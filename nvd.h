@@ -19,6 +19,7 @@ extern NVD_PARAMS nvd;
 
 
 void nvd_Init(void);
+uint16_t nvd_CheckSum(void);
 void nvd_SaveCalibrationParams(int16_t axb, int16_t ayb, int16_t azb, int16_t gxb, int16_t gyb, int16_t gzb, int16_t calibrated);
 
 

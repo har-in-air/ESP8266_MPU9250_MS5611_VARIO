@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "VarioAudio.h"
+#include "config.h"
 #include "util.h"
 
 
