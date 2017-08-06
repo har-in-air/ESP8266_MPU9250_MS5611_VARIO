@@ -30,13 +30,13 @@ void AveragedSample(int nSamples);
 void CalculateTemperatureCx10(void);
 float CalculatePressurePa(void);
 void CalculateSensorNoisePa(void);
-void Config(void);
 void Reset(void);
 
-void ReadCoefficients(void);
+void GetCalibrationCoefficients(void);
 float Pa2Cm(float pa);
 void Test(int nSamples);
-
+int  ReadPROM(void);
+uint8_t CRC4(uint8_t prom[] );
 int  SampleStateMachine(void);
 void InitializeSampleStateMachine(void);
 
@@ -47,7 +47,7 @@ int  celsiusSample_;
 volatile int sensorState;
 
 private :
-
+uint8_t prom_[16];
 uint16_t cal_[6];
 int64_t tref_;
 int64_t offT1_;

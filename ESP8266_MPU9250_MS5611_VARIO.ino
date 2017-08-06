@@ -45,7 +45,7 @@ int pinSDA = 4;
 int pinSCL = 5;
 int pinDRDYInt = 15;
 int pinAudio = 13;
-int pinBtn = 0;
+int pinCalibBtn = 0;
 
 volatile int drdyCounter;
 volatile int drdyFlag;
@@ -65,7 +65,7 @@ int batteryVoltage(void) {
 		delay(1);
 		}
 	adcSample /= 4;
-	// potential divider with 120K and 33K to scale 4.2V down to < 1.0V for the ESP8266 ADC
+	// voltage divider with 120K and 33K to scale 4.2V down to < 1.0V for the ESP8266 ADC
 	// actual measurement 0.854V with battery voltage = 4.0V => actual scale up from resistive divider = 4.0/0.854 = 4.6838
 	// adc isn't very accurate either, experimental correction factor ~ 1.04, so effective scale up is 1.04 * 4.6838
 	return (int) ((adcSample*1.04f*4.6838f*10.0f)/1023.0f + 0.5f); //  voltage x 10
@@ -82,13 +82,13 @@ void audio_indicateBatteryVoltage(int bv) {
     if (bv >= 36) numBeeps = 2;
     else  numBeeps = 1;
     while (numBeeps--) {
-        audio.GenerateTone(1000, 300);
+        audio.GenerateTone(BATTERY_TONE_FREQHZ, 300);
         delay(300);
         }
     }  
 
 void DRDYInterruptHandler() {
-    drdyFlag = 1;
+    drdyFlag = 1; // indicate new MPU9250 data is available
 	drdyCounter++;
 	}	
 
@@ -103,18 +103,19 @@ void updateTime(){
 	}
 	
 void powerDown() {
-	// residual current draw after power down is the sum of ESP8266 deep sleep current,
-	// MPU9250 sleep mode current, MS5611 standby current, voltage regulators quiescent
-	// current, plus miscellaneous current through resistive paths e.g. the
-	// ADC potential divider.
+	// residual current draw after power down is the sum of ESP8266 deep sleep mode current,
+	// MPU9250 sleep mode current, MS5611 standby current, quiescent current of voltage
+	// regulators, and miscellaneous current through resistive paths e.g. the
+	// ADC voltage divider.
 	audio.SetFrequency(0); // switch off pwm audio 
 	imu.Sleep(); // put MPU9250 in sleep mode
 	ESP.deepSleep(0); // ESP8266 in sleep can only recover with a reset/power cycle
 	}
 
-// if nvd data is corrupted, the accel and gyro biases are 
-// set to a "safe" value of 0, and this uncalibrated state is
-// indicated with a sequence of alternating low and high beeps.
+	
+// if imu calibration data in flash is corrupted, the accel and gyro biases are 
+// set to 0, and this uncalibrated state is indicated with a sequence of alternating 
+// low and high beeps.
 void indicateUncalibratedAccelerometer() {
 	for (int cnt = 0; cnt < 5; cnt++) {
 		audio.GenerateTone(200,500); 
@@ -131,7 +132,24 @@ void indicatePowerDown() {
 	audio.GenerateTone(500, 1000);
 	audio.GenerateTone(250, 1000);
 	}
-	
+
+// problem with MS5611 calibration CRC, assume communication 
+// error or bad device. Indicate with series of 10 high pitched beeps.
+void indicateFaultMS5611() {
+	for (int cnt = 0; cnt < 10; cnt++) {
+		audio.GenerateTone(MS5611_ERROR_TONE_FREQHZ,1000); 
+		delay(100);
+		}
+	}
+
+// problem reading MPU9250 ID, assume communication 
+// error or bad device. Indicate with series of 10 low pitched beeps.
+void indicateFaultMPU9250() {
+	for (int cnt = 0; cnt < 10; cnt++) {
+		audio.GenerateTone(MPU9250_ERROR_TONE_FREQHZ,1000); 
+		delay(100);
+		}
+	}
 	
 void setup() {
 	delay(10);
@@ -144,30 +162,40 @@ void setup() {
 	Wire.begin(pinSDA, pinSCL);
 	Wire.setClock(400000); // set clock frequency AFTER Wire.begin()
 	audio.Config(pinAudio); 
+	
 	int bv = batteryVoltage();
 	Serial.printf("battery voltage = %d.%dV\r\n", bv/10, bv%10 );
 	audio_indicateBatteryVoltage(bv);
+	delay(1000);
+	
+	if (!baro.ReadPROM()) {
+		Serial.printf("Bad CRC read from MS5611 calibration PROM\r\n");
+		Serial.flush();
+		indicateFaultMS5611(); // 10 high pitched beeps
+		powerDown();   // try power-cycling to fix this
+		}
+	
+	if (!imu.CheckID()) {
+		Serial.printf("Error reading mpu9250 WHO_AM_I register\r\n");
+		Serial.flush();
+		indicateFaultMPU9250(); // 10 low pitched beeps
+		powerDown();   // try power-cycling to fix this
+		}
 
-	// read calibration parameters from EEPROM
+	// if we got this far, MPU9250 and MS5611 look OK
+	// Read calibrated accelerometer and gyro bias values saved in ESP8266 flash
     nvd_Init();
 	if (nvd.params.axBias == 0 && nvd.params.ayBias == 0 && nvd.params.azBias == 0) {
-		indicateUncalibratedAccelerometer(); 
+		indicateUncalibratedAccelerometer(); // series of alternating low/high tones
 		}
 	imu.SetCalibrationParams(&nvd);
 	
 	drdyCounter = 0;
 	drdyFlag = 0;
 	// INT output of MPU9250 is configured as push-pull, active high pulse. 
-	// GPIO15 already has an external pull-down resistor, required for normal boot mode.
+	// GPIO15 already has an external 10K pull-down resistor (required for normal ESP8266 boot mode)
 	pinMode(pinDRDYInt, INPUT); 
 	attachInterrupt(digitalPinToInterrupt(pinDRDYInt), DRDYInterruptHandler, RISING);
-	
-	if (!imu.CheckID()) {
-		Serial.printf("no response from mpu9250\r\n");
-		Serial.flush();
-		audio.IndicateFault(200); // series of low frequency tones
-		powerDown();   // try power-cycling
-		}
 		
 	// configure MPU9250 to start generating gyro and accel data at 200Hz ODR	
 	imu.ConfigAccelGyro();
@@ -176,56 +204,57 @@ void setup() {
 	// and use the last saved gyro biases.
 	// Allow a few seconds for unit to be left undisturbed so gyro can be calibrated.
 	// This delay is indicated with a series of 10 short beeps. During this time if you press and hold the
-	// flash/calibration button (GPIO0), the unit will calibrate both accelerometer and gyro.
-	// As soon as you hear the long confirmation tone, release the flash/calibration
+	// calibration button (GPIO0), the unit will calibrate both accelerometer and gyro.
+	// As soon as you hear the long confirmation tone, release the calibration
 	// button and put the unit in accelerometer calibration position resting undisturbed on a horizontal surface 
 	// with the accelerometer +z axis pointing vertically downwards. You will have some time 
 	// to do this, indicated by a series of beeps. After calibration, the unit will generate another 
 	// tone, save the calibration parameters to flash, and continue with normal vario operation
 	
-	// GPIO0 already has an external pull-up resistor for normal boot mode
-	pinMode(pinBtn, INPUT);
+	// GPIO0 already has an external 10K pull-up resistor (required for normal ESP8266 boot mode)
+	pinMode(pinCalibBtn, INPUT);
 	int bCalibrateAccelerometer = 0;
 	// short beeps for ~5 seconds
 	for (int inx = 0; inx < 10; inx++) {
 		delay(500); 
-		audio.GenerateTone(800,50); 
-		if (digitalRead(pinBtn) == 0) {
+		audio.GenerateTone(CALIB_TONE_FREQHZ,50); 
+		if (digitalRead(pinCalibBtn) == 0) {
 			delay(100); // debounce the button
-			if (digitalRead(pinBtn) == 0) {
+			if (digitalRead(pinCalibBtn) == 0) {
 				bCalibrateAccelerometer = 1;
 				break;
 				}
 			}
 		}
 	if (bCalibrateAccelerometer) {	
-		// acknowledge flash/calibration button press with long tone
-		audio.GenerateTone(1000, 3000);
+		// acknowledge calibration button press with long tone
+		audio.GenerateTone(CALIB_TONE_FREQHZ, 3000);
 		// allow 10 seconds for the unit to be placed in calibration position with the 
 		// accelerometer +z pointing downwards. Indicate this delay with a series of short beeps
 		for (int inx = 0; inx < 50; inx++) {
 			delay(200); 
-			audio.GenerateTone(800,50);
+			audio.GenerateTone(CALIB_TONE_FREQHZ,50);
 			}
 		Serial.printf("Calibrating accel & gyro\r\n");
 		imu.CalibrateAccel();
 		imu.CalibrateGyro();
 		nvd_SaveCalibrationParams(imu.axBias_,imu.ayBias_,imu.azBias_,imu.gxBias_,imu.gyBias_,imu.gzBias_,NVD_CALIBRATED);
 		}
-	// normal flow, attempt to calibrate gyro each time. If calibration isn't possible because the unit is in motion,
+	// normal operation flow, attempt to calibrate gyro. If calibration isn't possible because the unit is disturbed,
 	// use the last saved gyro biases
 	imu.CalibrateGyro();
 	// indicate calibration complete
-	audio.GenerateTone(800, 1000);
+	audio.GenerateTone(CALIB_TONE_FREQHZ, 1000);
+	
 	delay(1000);			
 	baro.Reset();
-	delay(100);
-	baro.Config();
+	baro.GetCalibrationCoefficients();
 	baro.AveragedSample(4); 
 	baro.InitializeSampleStateMachine();
 	
 	// initialize kalman filter with barometer estimated altitude
 	kf.Config(KF_ZMEAS_VARIANCE, KF_ZACCEL_VARIANCE, KF_ACCELBIAS_VARIANCE, baro.zCmAvg_, 0.0f, 0.0f);
+	
 	initTime();
 	zAccelAccumulator = 0.0f;
 	baroTimeDeltaSecs = 0.0f;

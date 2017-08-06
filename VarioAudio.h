@@ -40,7 +40,6 @@ void Config(int pinPWM);
 void VarioBeep(int32_t cps);
 void SetFrequency(int32_t freqHz);
 void GenerateTone( int32_t freqHz, int ms);
-void IndicateFault(int32_t freqHz);
 
 private :
 int32_t discrimThreshold_;

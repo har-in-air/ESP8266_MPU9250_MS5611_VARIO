@@ -153,15 +153,3 @@ void VarioAudio::GenerateTone(int32_t fHz, int ms) {
     SetFrequency(0);
     }
 
-// Generates audio alarm for a fault event as 4 tones
-// with the same frequency
-void VarioAudio::IndicateFault(int32_t fHz) {
-    GenerateTone(fHz,300);
-    delay(100);
-    GenerateTone(fHz,300);
-    delay(100);
-    GenerateTone(fHz,300);
-    delay(100);
-    GenerateTone(fHz,300);
-    delay(100);
-    }

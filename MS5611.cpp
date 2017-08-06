@@ -3,22 +3,12 @@
 #include "MS5611.h"
 
 
-MS5611::MS5611() {}
-
-void MS5611::Config(void) {
+MS5611::MS5611() {
 	paSample_ = 0.0f;
 	zCmSample_ = 0.0f;
 	celsiusSample_ = 0;
 	zCmAvg_ = 0.0f;
-
-	ReadCoefficients();
-    //Serial.printf("\r\nCalib Coeffs : %d %d %d %d %d %d\r\n",cal_[0],cal_[1],cal_[2],cal_[3],cal_[4],cal_[5]);
-    tref_ = ((int64_t)cal_[4])<<8;
-    offT1_ = ((int64_t)cal_[1])<<16;
-    sensT1_ = ((int64_t)cal_[0])<<15;
 	}
-
-
 
 
 #if 0
@@ -219,23 +209,66 @@ int MS5611::SampleStateMachine(void) {
 void MS5611::Reset() {
 	Wire.beginTransmission(MS5611_I2C_ADDRESS);  
 	Wire.write(MS5611_RESET);                
-	Wire.endTransmission();                  
+	Wire.endTransmission();       
+	delay(5); // 3mS as per app note AN520	
     }
    
 	
-void MS5611::ReadCoefficients(void)        {
+void MS5611::GetCalibrationCoefficients(void)  {
     for (int inx = 0; inx < 6; inx++) {
-		Wire.beginTransmission(MS5611_I2C_ADDRESS); 
-        Wire.write(0xA2 + inx*2); // skip the factory data in addr A0, and the checksum at last addr
-        Wire.endTransmission(false); // restart
-        Wire.requestFrom(MS5611_I2C_ADDRESS, 2); 
-		int cnt = 0;
-		uint8_t buf[2];
-		while (Wire.available()) {
-			buf[cnt++] = Wire.read(); 
-			}  
-		cal_[inx] = (((uint16_t)buf[0])<<8) | (uint16_t)buf[1];
+		int promIndex = 2 + inx*2; 
+		cal_[inx] = (((uint16_t)prom_[promIndex])<<8) | (uint16_t)prom_[promIndex+1];
 		}
+    //Serial.printf("\r\nCalib Coeffs : %d %d %d %d %d %d\r\n",cal_[0],cal_[1],cal_[2],cal_[3],cal_[4],cal_[5]);
+    tref_ = ((int64_t)cal_[4])<<8;
+    offT1_ = ((int64_t)cal_[1])<<16;
+    sensT1_ = ((int64_t)cal_[0])<<15;		
     }
    
-   
+int MS5611::ReadPROM(void)    {
+    for (int inx = 0; inx < 8; inx++) {
+		Wire.beginTransmission(MS5611_I2C_ADDRESS); 
+		Wire.write(0xA0 + inx*2); 
+		Wire.endTransmission(false); // restart
+		Wire.requestFrom(MS5611_I2C_ADDRESS, 2); 
+		int cnt = 0;
+		while (Wire.available()) {
+			prom_[inx*2 + cnt] = Wire.read(); 
+			cnt++;
+			}
+		}			
+	//Serial.printf("\r\nProm : ");
+	//for (int inx = 0; inx < 16; inx++) {
+	//	Serial.printf("0x%02x ", prom_[inx]);
+	//	}
+	//Serial.printf("\r\n");
+	uint8_t crcPROM = prom_[15] & 0x0F;
+	uint8_t crcCalculated = CRC4(prom_);
+	return (crcCalculated == crcPROM ? 1 : 0);
+	}
+	
+	
+uint8_t MS5611::CRC4(uint8_t prom[] ) {
+	 int cnt, nbit; 
+	 uint16_t crcRemainder; 
+	 uint8_t crcSave = prom[15]; // crc byte in PROM
+	 Serial.printf("PROM CRC = 0x%x\r\n", prom[15] & 0x0F);
+	 crcRemainder = 0x0000;
+	 prom[15] = 0; //CRC byte is replaced by 0
+	 
+	 for (cnt = 0; cnt < 16; cnt++)  {
+		crcRemainder ^= (uint16_t) prom[cnt];
+		for (nbit = 8; nbit > 0; nbit--) {
+			if (crcRemainder & (0x8000)) {
+				crcRemainder = (crcRemainder << 1) ^ 0x3000; 
+				}
+			else {
+				crcRemainder = (crcRemainder << 1);
+				}
+			}
+		}
+	 crcRemainder= (0x000F & (crcRemainder >> 12)); // final 4-bit reminder is CRC code
+	 prom[15] = crcSave; // restore the crc byte
+	 Serial.printf("Calculated CRC = 0x%x\r\n",  crcRemainder ^ 0x0);
+	 return (uint8_t)(crcRemainder ^ 0x0);
+	} 
