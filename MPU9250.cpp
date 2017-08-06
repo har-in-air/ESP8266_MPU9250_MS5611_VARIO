@@ -41,13 +41,13 @@ int MPU9250::CheckID(void) {
 	return (( whoami == 0x71) ? 1 : 0);
 	}
 	
-void MPU9250::SetCalibrationParams(NVD_PARAMS* pNVD) {
-	axBias_ = pNVD->axBias;
-	ayBias_ = pNVD->ayBias;
-	azBias_ = pNVD->azBias;
-	gxBias_ = pNVD->gxBias;
-	gyBias_ = pNVD->gyBias;
-	gzBias_ = pNVD->gzBias;
+void MPU9250::SetCalibrationParams(NVD* pNVD) {
+	axBias_ = pNVD->params.axBias;
+	ayBias_ = pNVD->params.ayBias;
+	azBias_ = pNVD->params.azBias;
+	gxBias_ = pNVD->params.gxBias;
+	gyBias_ = pNVD->params.gyBias;
+	gzBias_ = pNVD->params.gzBias;
 	Serial.printf("Using saved calibration parameters :\r\n");
 	Serial.printf("Accel : axBias %d, ayBias %d, azBias %d\r\n",axBias_, ayBias_, azBias_);
 	Serial.printf("Gyro : gxBias %d, gyBias %d, gzBias %d\r\n",gxBias_, gyBias_, gzBias_);

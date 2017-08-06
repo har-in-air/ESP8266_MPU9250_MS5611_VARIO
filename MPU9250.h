@@ -40,8 +40,8 @@
 // i2c 7bit device address is 110 100[AD0] = 0x68
 #define MPU9250_I2C_ADDRESS 	0x68  
 
-#define MPU9250_2G_SENSITIVITY 		16.384f 	// lsb per mg
-#define MPU9250_500DPS_SENSITIVITY	62.5f 		// lsb per dps
+#define MPU9250_2G_SENSITIVITY 		16.384f 	// lsb per milli-g
+#define MPU9250_500DPS_SENSITIVITY	65.5f 		// lsb per deg/sec
 
 
 class MPU9250 {
@@ -57,7 +57,7 @@ private :
     void ConfigAccelGyro(void);
     void CalibrateGyro(void);
     void CalibrateAccel(void);
-	void SetCalibrationParams(NVD_PARAMS* pNVD);
+	void SetCalibrationParams(NVD* pNVD);
 	void Sleep(void);
     void WriteByte(uint8_t deviceID, uint8_t addr, uint8_t val);
     uint8_t ReadByte(uint8_t deviceID, uint8_t addr);

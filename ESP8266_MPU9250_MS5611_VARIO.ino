@@ -32,7 +32,8 @@ extern "C" {
 
 uint32_t timePreviousUs;
 uint32_t timeNowUs;
-float timeDeltaSecs;
+float imuTimeDeltaSecs;
+float baroTimeDeltaSecs;
 
 float accel[3];
 float gyro[3];
@@ -48,7 +49,7 @@ int pinBtn = 0;
 
 volatile int drdyCounter;
 volatile int drdyFlag;
-int sampleCounter;
+int baroCounter;
 int timeoutSeconds;
 
 MPU9250 imu;
@@ -97,16 +98,41 @@ void initTime() {
 
 void updateTime(){
 	timeNowUs = micros();
-	timeDeltaSecs = ((timeNowUs - timePreviousUs) / 1000000.0f);
+	imuTimeDeltaSecs = ((timeNowUs - timePreviousUs) / 1000000.0f);
 	timePreviousUs = timeNowUs;
 	}
 	
 void powerDown() {
+	// residual current draw after power down is the sum of ESP8266 deep sleep current,
+	// MPU9250 sleep mode current, MS5611 standby current, voltage regulators quiescent
+	// current, plus miscellaneous current through resistive paths e.g. the
+	// ADC potential divider.
 	audio.SetFrequency(0); // switch off pwm audio 
 	imu.Sleep(); // put MPU9250 in sleep mode
-	ESP.deepSleep(0); // esp8266 in sleep can only recover with a reset/power cycle
+	ESP.deepSleep(0); // ESP8266 in sleep can only recover with a reset/power cycle
 	}
 
+// if nvd data is corrupted, the accel and gyro biases are 
+// set to a "safe" value of 0, and this uncalibrated state is
+// indicated with a sequence of alternating low and high beeps.
+void indicateUncalibratedAccelerometer() {
+	for (int cnt = 0; cnt < 5; cnt++) {
+		audio.GenerateTone(200,500); 
+		audio.GenerateTone(2000,500);
+		}
+	}
+	
+// "no-activity" power down is indicated with a series of descending
+// tones. If you hear this, switch off the vario as there is still
+// residual current draw from the circuit components	
+void indicatePowerDown() {
+	audio.GenerateTone(2000,1000); 
+	audio.GenerateTone(1000,1000);
+	audio.GenerateTone(500, 1000);
+	audio.GenerateTone(250, 1000);
+	}
+	
+	
 void setup() {
 	delay(10);
 	WiFi.disconnect(); 
@@ -124,43 +150,48 @@ void setup() {
 
 	// read calibration parameters from EEPROM
     nvd_Init();
-	if (nvd.axBias == 0 && nvd.ayBias == 0 && nvd.azBias == 0) {
-		audio.IndicateFault(3000); // if accelerometer isn't calibrated, indicate with fault
+	if (nvd.params.axBias == 0 && nvd.params.ayBias == 0 && nvd.params.azBias == 0) {
+		indicateUncalibratedAccelerometer(); 
 		}
-	// use the saved calibration parameters	
 	imu.SetCalibrationParams(&nvd);
 	
 	drdyCounter = 0;
 	drdyFlag = 0;
-	pinMode(pinDRDYInt, INPUT); // connected to INT output of CJMCU-117
+	// INT output of MPU9250 is configured as push-pull, active high pulse. 
+	// GPIO15 already has an external pull-down resistor, required for normal boot mode.
+	pinMode(pinDRDYInt, INPUT); 
 	attachInterrupt(digitalPinToInterrupt(pinDRDYInt), DRDYInterruptHandler, RISING);
 	
 	if (!imu.CheckID()) {
-		Serial.printf("Unable to communicate with mpu9250, abort!\r\n");
+		Serial.printf("no response from mpu9250\r\n");
 		Serial.flush();
-		audio.IndicateFault(200);
-		powerDown();
+		audio.IndicateFault(200); // series of low frequency tones
+		powerDown();   // try power-cycling
 		}
-	// set up MPU9250 to start generating gyro and accel data at 200Hz ODR	
+		
+	// configure MPU9250 to start generating gyro and accel data at 200Hz ODR	
 	imu.ConfigAccelGyro();
 	
-	// try to calibrate gyro each time on power up. if the unit is not at rest, give up
+	// Try to calibrate gyro each time on power up. if the unit is not at rest, give up
 	// and use the last saved gyro biases.
-	// allow a few seconds for unit to be left undisturbed so gyro can be calibrated,
-	// this delay is indicated with a series of 10 beeps. During this time if you press and hold the
-	// flash button (GPIO0), the unit will set up for both accelerometer and gyro 
-	// calibration. As soon as you hear the long confirmation tone, release the flash
-	// button and put the unit in calibration position resting undisturbed on a horizontal surface 
+	// Allow a few seconds for unit to be left undisturbed so gyro can be calibrated.
+	// This delay is indicated with a series of 10 short beeps. During this time if you press and hold the
+	// flash/calibration button (GPIO0), the unit will calibrate both accelerometer and gyro.
+	// As soon as you hear the long confirmation tone, release the flash/calibration
+	// button and put the unit in accelerometer calibration position resting undisturbed on a horizontal surface 
 	// with the accelerometer +z axis pointing vertically downwards. You will have some time 
 	// to do this, indicated by a series of beeps. After calibration, the unit will generate another 
 	// tone, save the calibration parameters to flash, and continue with normal vario operation
+	
+	// GPIO0 already has an external pull-up resistor for normal boot mode
 	pinMode(pinBtn, INPUT);
 	int bCalibrateAccelerometer = 0;
+	// short beeps for ~5 seconds
 	for (int inx = 0; inx < 10; inx++) {
 		delay(500); 
-		audio.GenerateTone(800,50);
+		audio.GenerateTone(800,50); 
 		if (digitalRead(pinBtn) == 0) {
-			delay(100);
+			delay(100); // debounce the button
 			if (digitalRead(pinBtn) == 0) {
 				bCalibrateAccelerometer = 1;
 				break;
@@ -168,15 +199,15 @@ void setup() {
 			}
 		}
 	if (bCalibrateAccelerometer) {	
-		// confirm button press with long tone
+		// acknowledge flash/calibration button press with long tone
 		audio.GenerateTone(1000, 3000);
-		// allow time for the unit to be placed in calibration position with the accelerometer +z pointing downwards
-		// indicate this delay with a series of short beeps
+		// allow 10 seconds for the unit to be placed in calibration position with the 
+		// accelerometer +z pointing downwards. Indicate this delay with a series of short beeps
 		for (int inx = 0; inx < 50; inx++) {
 			delay(200); 
 			audio.GenerateTone(800,50);
 			}
-		Serial.printf("Now calibrating accel & gyro\r\n");
+		Serial.printf("Calibrating accel & gyro\r\n");
 		imu.CalibrateAccel();
 		imu.CalibrateGyro();
 		nvd_SaveCalibrationParams(imu.axBias_,imu.ayBias_,imu.azBias_,imu.gxBias_,imu.gyBias_,imu.gzBias_,NVD_CALIBRATED);
@@ -192,43 +223,50 @@ void setup() {
 	baro.Config();
 	baro.AveragedSample(4); 
 	baro.InitializeSampleStateMachine();
-
+	
+	// initialize kalman filter with barometer estimated altitude
 	kf.Config(KF_ZMEAS_VARIANCE, KF_ZACCEL_VARIANCE, KF_ACCELBIAS_VARIANCE, baro.zCmAvg_, 0.0f, 0.0f);
 	initTime();
 	zAccelAccumulator = 0.0f;
-	sampleCounter = 0;
+	baroTimeDeltaSecs = 0.0f;
+	baroCounter = 0;
 	timeoutSeconds = 0;
 	}
 	
 
-
 void loop(){
-	if ( drdyFlag ) { // new data sample ready, mpu9250 configured for 200Hz ODR => 5mS sample interval
+	if ( drdyFlag ) { // new MPU9250 data ready, 200Hz ODR => ~5mS sample interval
 		drdyFlag = 0;
 		updateTime();
 #ifdef IMU_DEBUG		
-		cct_SetMarker();
+		cct_SetMarker(); // set origin for estimating the time taken to read and process the data
 #endif		
-		imu.GetAccelGyroData(accel, gyro); // accelerometer samples (ax,ay,az) in milli-Gs, gyroscope samples (gx,gy,gz) in deg/second
-        // CJMCU-117 board is placed upside down in the case. We arbitrarily decide that the CJMCU-117 board 
-		// silkscreen +X points "forward" or "north"  (in our case, the side with the power switch), 
-		// silkscreen +Y points "right" or "east", silkscreen +Z points down. This is the North-East-Down (NED) 
+		// accelerometer samples (ax,ay,az) in milli-Gs, gyroscope samples (gx,gy,gz) in deg/second
+		imu.GetAccelGyroData(accel, gyro); 
+		
+        // CJMCU-117 board is placed upside down in the case (when speaker is pointing up). We arbitrarily decide that 
+		// the CJMCU-117 board silkscreen +X points "forward" or "north"  (in our case, the side with the power switch), 
+		// silkscreen +Y points "right" or "east", and silkscreen +Z points down. This is the North-East-Down (NED) 
 		// right-handed coordinate frame used in our AHRS algorithm implementation.
 		// The required mapping from sensor samples to NED frame for our specific board orientation is : 
-		// gxned = gx, gyned = gy, gzned = gz
-		// axned = -ax, ayned = -ay, azned = -az
-		imu_MahonyAHRSupdateIMU(timeDeltaSecs, gyro[0]*DEG_TO_RAD, gyro[1]*DEG_TO_RAD, gyro[2]*DEG_TO_RAD, -accel[0], -accel[1], -accel[2]);
+		// gxned = gx, gyned = gy, gzned = gz (clockwise rotations about the axis must result in +ve readings on the axis)
+		// axned = -ax, ayned = -ay, azned = -az (when the axis points down, axis reading must be +ve)
+		// The AHRS algorithm expects rotation rates in radians/second
+		imu_MahonyAHRSupdateIMU(imuTimeDeltaSecs, gyro[0]*DEG_TO_RAD, gyro[1]*DEG_TO_RAD, gyro[2]*DEG_TO_RAD, -accel[0], -accel[1], -accel[2]);
+		
 		float gravityCompensatedAccel = imu_GravityCompensatedAccel(-accel[0], -accel[1], -accel[2], q0, q1, q2, q3);
 		zAccelAccumulator += gravityCompensatedAccel; // one earth-z acceleration value computed every 5mS, accumulate
 
-		sampleCounter++;
-		if (sampleCounter >= 2) { // 10mS elapsed, this is the sampling period for MS5611, 
-			sampleCounter = 0;    // alternating between pressure and temperature samples
+		baroCounter++;
+		baroTimeDeltaSecs += imuTimeDeltaSecs;
+		if (baroCounter >= 2) { // ~10mS elapsed, this is the sampling period for MS5611, 
+			baroCounter = 0;    // alternating between pressure and temperature samples
 			int zMeasurementAvailable = baro.SampleStateMachine(); // one z (altitude) sample calculated for every new pair of pressure & temperature samples
 			if ( zMeasurementAvailable ) { 
 				float zAccelAverage = zAccelAccumulator / 4.0f; // average earth-z acceleration over the 20mS interval between z samples
-				kf.Update(baro.zCmSample_, zAccelAverage, 0.020f, &kfAltitudeCm, &kfClimbrateCps);
+				kf.Update(baro.zCmSample_, zAccelAverage, baroTimeDeltaSecs, &kfAltitudeCm, &kfClimbrateCps);
 				zAccelAccumulator = 0.0f;
+				baroTimeDeltaSecs = 0.0f;
 				int32_t audioCps =  kfClimbrateCps >= 0.0f ? (int32_t)(kfClimbrateCps+0.5f) : (int32_t)(kfClimbrateCps-0.5f);
 				if (ABS(audioCps) > SLEEP_THRESHOLD_CPS) { // reset sleep timeout watchdog if there is significant vertical motion
 					timeoutSeconds = 0;
@@ -236,7 +274,7 @@ void loop(){
 				if (timeoutSeconds >= SLEEP_TIMEOUT_SECONDS) {
 					Serial.print("Timed out, put MPU9250 and ESP8266 to sleep to minimize current draw\r\n");
 					Serial.flush();
-					audio.IndicateFault(1000);
+					indicatePowerDown(); 
 					powerDown();
 					}  	
 				CLAMP(audioCps, -1000, 1000); // clamp climbrate to +/- 10m/sec
@@ -244,7 +282,7 @@ void loop(){
 				}
 			}
 #ifdef IMU_DEBUG			
-		uint32_t elapsedUs =  cct_ElapsedTimeUs(); // check  worst case time  taken in reading and processing the data, should be less than 5mS
+		uint32_t elapsedUs =  cct_ElapsedTimeUs(); // calculate time  taken in reading and processing the data, should be less than 5mS worst case
 #endif
 		if (drdyCounter >= 200) {
 			drdyCounter = 0;
@@ -257,8 +295,8 @@ void loop(){
 			// Yaw is positive for clockwise rotation about the +Z axis
 			// Magnetometer isn't used, so yaw is initialized to 0 for the "forward" direction of the case on power up.
 			Serial.printf("\r\nYaw = %d Pitch = %d Roll = %d\r\n", (int)yaw, (int)pitch, (int)roll);
-			Serial.printf("Baro Alt = %d, kfAlt = %d, kfVario = %d\r\n",(int)baro.zCmSample_, (int)kfAltitudeCm, (int)kfClimbrateCps);
-			Serial.printf("us = %d\r\n", elapsedUs);
+			Serial.printf("bAlt = %d kfAlt = %d kfVario = %d\r\n",(int)baro.zCmSample_, (int)kfAltitudeCm, (int)kfClimbrateCps);
+			Serial.printf("Elapsed %dus\r\n", (int)elapsedUs);
 #endif			
 			}
 		} 

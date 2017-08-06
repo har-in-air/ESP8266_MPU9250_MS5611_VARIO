@@ -15,7 +15,12 @@ typedef struct NVD_PARAMS_ {
 	uint16_t checkSum;
 } NVD_PARAMS;
 
-extern NVD_PARAMS nvd;
+typedef union NVD_ {
+	NVD_PARAMS params;
+	uint8_t	   buf[NVD_SIZE_BYTES];
+} NVD;
+
+extern NVD nvd;
 
 
 void nvd_Init(void);
