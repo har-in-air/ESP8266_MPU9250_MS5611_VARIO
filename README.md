@@ -6,7 +6,7 @@ Features :
 2. lifty air beeps, for climbrates from +5cm/sec to +50cm/sec, indicated with short pulses and longer intervals.
 3. climbtone beeps, for climbrates > +0.5m/s, indicated with longer beeps and shorter intervals.
 4. sinktone generated for sinkrates > - 2.5m/s, indicated with continuous tones
-5. offscale tones generated for climbrates > +10m/s or sinkrates < -10m/s
+5. offscale tones generated for climbrates > +10m/s or sinkrates > -10m/s
 6. vario will automatically go into a low-power drain state if there is no vertical motion for 20minutes. This is in case you forgot to power off your vario after landing. Power off and on again to recover from this state.
 7. easy to assemble using widely available, off-the-shelf modules
 8. cheap !! Takes advantage of the popularity of the modules used in this project - you can source them for just a few $ (worldwide shipping included) on ebay and aliexpress.
