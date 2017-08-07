@@ -158,7 +158,7 @@ void setup() {
 	WiFi.forceSleepBegin(); // switch off radio to minimize current draw
 	delay(100); // delay(1) is required, additional delay so battery voltage can settle 
 	Serial.begin(115200);
-	Serial.printf("\r\nESP8266 MPU9250 MS5611 VARIO %s %s\r\n", __DATE__, __TIME__);
+	Serial.printf("\r\nESP8266 MPU9250 MS5611 VARIO compiled on %s at %s\r\n", __DATE__, __TIME__);
 	Wire.begin(pinSDA, pinSCL);
 	Wire.setClock(400000); // set clock frequency AFTER Wire.begin()
 	audio.Config(pinAudio); 

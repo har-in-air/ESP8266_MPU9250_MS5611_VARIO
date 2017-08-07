@@ -13,14 +13,7 @@ typedef struct BEEP_ {
 // more audio discrimination for climbrates under this threshold
 #define VARIO_XOVER_CPS       300
 
-// change these parameters based on the frequency bandwidth of the speaker
 
-#define VARIO_MAX_FREQHZ      4000
-#define VARIO_XOVER_FREQHZ    2000
-#define VARIO_MIN_FREQHZ      200
-
-#define VARIO_SINK_FREQHZ     400
-#define VARIO_TICK_FREQHZ     200
 
 #define VARIO_STATE_SINK    	11
 #define VARIO_STATE_QUIET   	22
