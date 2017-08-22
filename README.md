@@ -11,7 +11,7 @@ Features :
 7. easy to assemble using widely available, off-the-shelf modules
 8. cheap !! Takes advantage of the popularity of the modules used in this project - you can source them for just a few $ (worldwide shipping included) on ebay and aliexpress.
 
-Demo video at https://www.youtube.com/watch?v=_v7LXYskRPY
+Demo video at https://youtu.be/v9U-UKarfZY
 
 Software development platform used : Arduino 1.8.2 on Windows 10 x64. See https://github.com/esp8266/Arduino for instructions on how to install ESP8266 SDK/libraries.
 
