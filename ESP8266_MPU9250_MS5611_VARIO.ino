@@ -1,15 +1,15 @@
-// CJMCU-117 MPU9250+MS5611 circuit interface
+// CJMCU-117 circuit interface
 //
-// VCC  VBAT (via ferrite bead)
+// VCC  VBAT 	(via ferrite bead/capacitor filter)
 // GND  GND
-// SCL  GPIO5
-// SDA  GPIO4
-// NCS  3V3 (mpu9250 i2c mode, connect to CJMCU-117 LDO regulator output)
-// AD0  GND (mpu9250 i2c slave addr lsb = 0)
-// INT  GPIO15
+// SCL  GPIO5 	(ESP8266)
+// SDA  GPIO4 	(ESP8266)
+// NCS  3V3 	(sets mpu9250 i2c mode, connect to CJMCU-117 LDO regulator output)
+// AD0  GND 	(sets mpu9250 i2c slave addr lsb = 0)
+// INT  GPIO15	(ESP8266)
 // SDO 	x
-// CSB  GND (ms5611 i2c slave addr lsb = 0)
-// PS   3V3 (ms5611 i2c mode, connect to CJMCU-117 LDO regulator output)
+// CSB  GND 	(sets ms5611 i2c slave addr lsb = 0)
+// PS   3V3 	(sets ms5611 i2c mode, connect to CJMCU-117 LDO regulator output)
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -116,12 +116,13 @@ void powerDown() {
 // if imu calibration data in flash is corrupted, the accel and gyro biases are 
 // set to 0, and this uncalibrated state is indicated with a sequence of alternating 
 // low and high beeps.
-void indicateUncalibratedAccelerometer() {
+void indicateUncalibratedAccelerometerGyro() {
 	for (int cnt = 0; cnt < 5; cnt++) {
 		audio.GenerateTone(200,500); 
 		audio.GenerateTone(2000,500);
 		}
 	}
+
 	
 // "no-activity" power down is indicated with a series of descending
 // tones. If you hear this, switch off the vario as there is still
@@ -186,32 +187,35 @@ void setup() {
 	// Read calibrated accelerometer and gyro bias values saved in ESP8266 flash
     nvd_Init();
 	if (nvd.params.axBias == 0 && nvd.params.ayBias == 0 && nvd.params.azBias == 0) {
-		indicateUncalibratedAccelerometer(); // series of alternating low/high tones
+		// unit cannot be used for variometer application without calibration,  
+		// indicate with series of alternating low/high tones
+		indicateUncalibratedAccelerometerGyro(); 
 		}
 	imu.SetCalibrationParams(&nvd);
 	
 	drdyCounter = 0;
 	drdyFlag = 0;
 	// INT output of MPU9250 is configured as push-pull, active high pulse. 
-	// GPIO15 already has an external 10K pull-down resistor (required for normal ESP8266 boot mode)
+	// pinDRDYInt (GPIO15) already has an external 10K pull-down resistor (required for normal 
+	// ESP8266 boot mode)
 	pinMode(pinDRDYInt, INPUT); 
 	attachInterrupt(digitalPinToInterrupt(pinDRDYInt), DRDYInterruptHandler, RISING);
 		
-	// configure MPU9250 to start generating gyro and accel data at 200Hz ODR	
+	// configure MPU9250 to start generating gyro and accel data at 200Hz Output Data Rate (ODR)	
 	imu.ConfigAccelGyro();
 	
 	// Try to calibrate gyro each time on power up. if the unit is not at rest, give up
 	// and use the last saved gyro biases.
-	// Allow a few seconds for unit to be left undisturbed so gyro can be calibrated.
+	// The software delays a few seconds so that the unit can be left undisturbed for gyro calibration.
 	// This delay is indicated with a series of 10 short beeps. During this time if you press and hold the
-	// calibration button (GPIO0), the unit will calibrate both accelerometer and gyro.
+	// calibration button (GPIO0), the unit will calibrate the accelerometer first.
 	// As soon as you hear the long confirmation tone, release the calibration
 	// button and put the unit in accelerometer calibration position resting undisturbed on a horizontal surface 
 	// with the accelerometer +z axis pointing vertically downwards. You will have some time 
 	// to do this, indicated by a series of beeps. After calibration, the unit will generate another 
 	// tone, save the calibration parameters to flash, and continue with normal vario operation
 	
-	// GPIO0 already has an external 10K pull-up resistor (required for normal ESP8266 boot mode)
+	// pinCalibBtn (GPIO0) already has an external 10K pull-up resistor (required for normal ESP8266 boot mode)
 	pinMode(pinCalibBtn, INPUT);
 	int bCalibrateAccelerometer = 0;
 	// short beeps for ~5 seconds
@@ -229,30 +233,38 @@ void setup() {
 	if (bCalibrateAccelerometer) {	
 		// acknowledge calibration button press with long tone
 		audio.GenerateTone(CALIB_TONE_FREQHZ, 3000);
-		// allow 10 seconds for the unit to be placed in calibration position with the 
-		// accelerometer +z pointing downwards. Indicate this delay with a series of short beeps
+		// allow 10 seconds for the unit to be placed in accelerometer calibration position with the 
+		// accelerometer +z pointing downwards. Indicate this count down with a series of short beeps
 		for (int inx = 0; inx < 50; inx++) {
 			delay(200); 
 			audio.GenerateTone(CALIB_TONE_FREQHZ,50);
 			}
-		Serial.printf("Calibrating accel & gyro\r\n");
+		Serial.printf("Calibrating accelerometer\r\n");
 		imu.CalibrateAccel();
-		imu.CalibrateGyro();
 		nvd_SaveCalibrationParams(imu.axBias_,imu.ayBias_,imu.azBias_,imu.gxBias_,imu.gyBias_,imu.gzBias_,NVD_CALIBRATED);
 		}
-	// normal operation flow, attempt to calibrate gyro. If calibration isn't possible because the unit is disturbed,
-	// use the last saved gyro biases
-	imu.CalibrateGyro();
-	// indicate calibration complete
-	audio.GenerateTone(CALIB_TONE_FREQHZ, 1000);
-	
+
+	// normal power-on operation flow, attempt to calibrate gyro. If calibration isn't possible because 
+	// the unit is continuously disturbed (e.g. you turned on the unit while already flying), 
+	// use the last saved gyro biases. Otherwise, save the new gyro biases to flash memory
+	if (imu.CalibrateGyro()) {
+		// gyro calibration successful, one tone
+		audio.GenerateTone(CALIB_TONE_FREQHZ, 1000);
+		nvd_SaveCalibrationParams(imu.axBias_,imu.ayBias_,imu.azBias_,imu.gxBias_,imu.gyBias_,imu.gzBias_,NVD_CALIBRATED);
+		}
+	else { // gyro calibration failed, two descending tones
+		audio.GenerateTone(CALIB_TONE_FREQHZ, 1000);
+		delay(500);
+		audio.GenerateTone(CALIB_TONE_FREQHZ/2, 1000);
+		}
+		
 	delay(1000);			
 	baro.Reset();
-	baro.GetCalibrationCoefficients();
-	baro.AveragedSample(4); 
-	baro.InitializeSampleStateMachine();
+	baro.GetCalibrationCoefficients(); // read factory programmed calibration data
+	baro.AveragedSample(4); // get an estimate of starting altitude
+	baro.InitializeSampleStateMachine(); // start the pressure/temperature sampling cycle
 	
-	// initialize kalman filter with barometer estimated altitude
+	// initialize kalman filter with barometer estimated altitude, and climbrate = 0.0
 	kf.Config(KF_ZMEAS_VARIANCE, KF_ZACCEL_VARIANCE, KF_ACCELBIAS_VARIANCE, baro.zCmAvg_, 0.0f, 0.0f);
 	
 	initTime();
@@ -270,7 +282,7 @@ void loop(){
 #ifdef IMU_DEBUG		
 		cct_SetMarker(); // set origin for estimating the time taken to read and process the data
 #endif		
-		// accelerometer samples (ax,ay,az) in milli-Gs, gyroscope samples (gx,gy,gz) in deg/second
+		// accelerometer samples (ax,ay,az) in milli-Gs, gyroscope samples (gx,gy,gz) in degrees/second
 		imu.GetAccelGyroData(accel, gyro); 
 		
         // CJMCU-117 board is placed upside down in the case (when speaker is pointing up). We arbitrarily decide that 
@@ -323,9 +335,9 @@ void loop(){
 			// Roll is positive for clockwise rotation about the +X axis
 			// Yaw is positive for clockwise rotation about the +Z axis
 			// Magnetometer isn't used, so yaw is initialized to 0 for the "forward" direction of the case on power up.
-			Serial.printf("\r\nYaw = %d Pitch = %d Roll = %d\r\n", (int)yaw, (int)pitch, (int)roll);
-			Serial.printf("bAlt = %d kfAlt = %d kfVario = %d\r\n",(int)baro.zCmSample_, (int)kfAltitudeCm, (int)kfClimbrateCps);
-			Serial.printf("Elapsed %dus\r\n", (int)elapsedUs);
+			Serial.printf("\r\nY = %d P = %d R = %d\r\n", (int)yaw, (int)pitch, (int)roll);
+			//Serial.printf("ba = %d ka = %d kv = %d\r\n",(int)baro.zCmSample_, (int)kfAltitudeCm, (int)kfClimbrateCps);
+			//Serial.printf("Elapsed %dus\r\n", (int)elapsedUs);
 #endif			
 			}
 		} 

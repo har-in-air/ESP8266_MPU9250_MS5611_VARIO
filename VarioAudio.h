@@ -68,4 +68,6 @@ BEEP beepTbl_[10] = {
 };	
 };
 
+extern VarioAudio audio;
+
 #endif

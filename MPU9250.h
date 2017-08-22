@@ -55,7 +55,7 @@ private :
 	int CheckID(void);
 	void GetAccelGyroData(float* pAccelData, float* pGyroData);
     void ConfigAccelGyro(void);
-    void CalibrateGyro(void);
+    int  CalibrateGyro(void);
     void CalibrateAccel(void);
 	void SetCalibrationParams(NVD* pNVD);
 	void Sleep(void);

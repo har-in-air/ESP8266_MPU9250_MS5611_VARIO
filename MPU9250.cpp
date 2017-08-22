@@ -1,7 +1,10 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "MPU9250.h"
+#include "VarioAudio.h"
+#include "config.h"
 #include "util.h"
+
 
 MPU9250::MPU9250() {	
 	// valid for accelerometer full scale = +/- 2G
@@ -93,7 +96,7 @@ void MPU9250::ConfigAccelGyro(void) {
 
 
 // place unit so that the sensor board accelerometer +ve z axis points 
-// vertically downwards. This is where the sensor z axis is experiencing a static 
+// vertically downwards. This is where the sensor z axis sees a static 
 // acceleration of 1g. In this orientation the ax and ay values are 
 // the offsets for a 0g environment. 
 // Repeat this calibration a few times with the debug serial monitor to check the 
@@ -141,10 +144,9 @@ void MPU9250::CalibrateAccel(){
     Serial.printf("azBias = %d\r\n", (int)azBias_);
 	}
 
-#define GYRO_MAX_EXPECTED_OFFSET_500DPS	100
 #define GYRO_NUM_CALIB_SAMPLES			50
 	
-void MPU9250::CalibrateGyro(void){
+int MPU9250::CalibrateGyro(void){
 	uint8_t buf[6];
 	int16_t gx,gy,gz;
 	int32_t gxAccum, gyAccum, gzAccum;
@@ -159,8 +161,12 @@ void MPU9250::CalibrateGyro(void){
 			gx = (int16_t)(((uint16_t)buf[0] << 8) | (uint16_t)buf[1]);
 			gy = (int16_t)(((uint16_t)buf[2] << 8) | (uint16_t)buf[3]);
 			gz = (int16_t)(((uint16_t)buf[4] << 8) | (uint16_t)buf[5]);	
+			// if a larger than expected gyro bias is measured, assume the unit was disturbed and try again after a short delay, upto 10 times
 			if ((ABS(gx) > GYRO_MAX_EXPECTED_OFFSET_500DPS) || (ABS(gy) > GYRO_MAX_EXPECTED_OFFSET_500DPS) || (ABS(gz) > GYRO_MAX_EXPECTED_OFFSET_500DPS)) {
 				foundBadData = 1;
+				// generate a low tone pulse each time calibration fails. If you hear this when the unit is undisturbed,
+				// you probably need to increase GYRO_MAX_EXPECTED_OFFSET_500DPS. 
+				audio.GenerateTone(200, 300); 
 				break;
 				}  
 			gxAccum  += (int32_t) gx;
@@ -170,16 +176,19 @@ void MPU9250::CalibrateGyro(void){
 			}
 		} while (foundBadData && (++numTries < 10));
 
+	// update gyro biases only if calibration succeeded, else use the last saved values from flash memory. Valid scenario for
+	// gyro calibration failing is when you turn on the unit while flying. So not a big deal.
     if (!foundBadData) {		
 		gxBias_ =  (int16_t)( gxAccum / GYRO_NUM_CALIB_SAMPLES);
 		gyBias_ =  (int16_t)( gyAccum / GYRO_NUM_CALIB_SAMPLES);
-		gzBias_ =  (int16_t)( gzAccum / GYRO_NUM_CALIB_SAMPLES);
+		gzBias_ =  (int16_t)( gzAccum / GYRO_NUM_CALIB_SAMPLES);		
 		}
 
 	Serial.printf("Num Tries = %d\r\n",numTries);
 	Serial.printf("gxBias = %d\r\n",gxBias_);
 	Serial.printf("gyBias = %d\r\n",gyBias_);
 	Serial.printf("gzBias = %d\r\n",gzBias_);
+	return (foundBadData ? 0 : 1);
 	}
 
 
