@@ -15,9 +15,9 @@
 // vario thresholds in cm/sec for generating different
 // audio tones. Between the sink threshold and the zero threshold,
 // the vario is quiet
-#define CLIMB_THRESHOLD     5
+#define CLIMB_THRESHOLD     50
 #define ZERO_THRESHOLD	    5
-#define SINK_THRESHOLD      -100
+#define SINK_THRESHOLD      -250
 
 // change these parameters based on the frequency bandwidth of the speaker
 
