@@ -68,19 +68,19 @@ void wificonfig_GeneratePage() {
   szPageContent += "Climb Threshold [20 ... 100] <INPUT type=\"number\" name=\"varioClimbThreshold\" value=\"" + szVarioClimbThresholdCps + "\">cm/s<BR>";
   szPageContent += "Zero Threshold [-20 ... 20] <INPUT type=\"number\" name=\"varioZeroThreshold\" value=\"" + szVarioZeroThresholdCps + "\">cm/s<BR>";
   szPageContent += "Sink Threshold [-400 ... -100] <INPUT type=\"number\" name=\"varioSinkThreshold\" value=\"" + szVarioSinkThresholdCps + "\">cm/s<BR>";
-  szPageContent += "Crossover climbrate [300 ... 700] <INPUT type=\"number\" name=\"varioCrossoverCps\" value=\"" + szVarioCrossoverCps + "\">cm/s<BR>";
+  szPageContent += "Crossover climbrate [300 ... 800] <INPUT type=\"number\" name=\"varioCrossoverCps\" value=\"" + szVarioCrossoverCps + "\">cm/s<BR>";
   szPageContent += "</fieldset><fieldset><legend>Kalman Filter</legend>";
   szPageContent += "Acceleration Variance [100 ... 10000] <INPUT type=\"number\" name=\"kfAccelVar\" value=\"" + szKFAccelVariance + "\"><BR>";
   szPageContent += "Altitude Noise Variance [100 ... 400] <INPUT type=\"number\" name=\"kfZMeasVar\" value=\"" + szKFZMeasVariance + "\"><BR>";
   szPageContent += "</fieldset><fieldset><legend>Alarms</legend>";
-  szPageContent += "Battery Tone [200 ... 4000] <INPUT type=\"number\" name=\"batteryTone\" value=\"" + szBatteryToneHz + "\">Hz<BR>";
-  szPageContent += "Uncalibrated Tone [200 ... 4000] <INPUT type=\"number\" name=\"uncalibratedTone\" value=\"" + szUncalibratedToneHz + "\">Hz<BR>";
-  szPageContent += "Calibrating Tone [200 ... 4000] <INPUT type=\"number\" name=\"calibratingTone\" value=\"" + szCalibratingToneHz + "\">Hz<BR>";
-  szPageContent += "MPU9250 Error Tone [200 ... 4000] <INPUT type=\"number\" name=\"mpu9250ErrorTone\" value=\"" + szMPU9250ErrorToneHz + "\">Hz<BR>";
-  szPageContent += "MS5611 Error Tone [200 ... 4000] <INPUT type=\"number\" name=\"ms5611ErrorTone\" value=\"" + szMS5611ErrorToneHz + "\">Hz<BR>";
+  szPageContent += "Battery Tone [200 ... 3200] <INPUT type=\"number\" name=\"batteryTone\" value=\"" + szBatteryToneHz + "\">Hz<BR>";
+  szPageContent += "Uncalibrated Tone [200 ... 3200] <INPUT type=\"number\" name=\"uncalibratedTone\" value=\"" + szUncalibratedToneHz + "\">Hz<BR>";
+  szPageContent += "Calibrating Tone [200 ... 3200] <INPUT type=\"number\" name=\"calibratingTone\" value=\"" + szCalibratingToneHz + "\">Hz<BR>";
+  szPageContent += "MPU9250 Error Tone [200 ... 3200] <INPUT type=\"number\" name=\"mpu9250ErrorTone\" value=\"" + szMPU9250ErrorToneHz + "\">Hz<BR>";
+  szPageContent += "MS5611 Error Tone [200 ... 3200] <INPUT type=\"number\" name=\"ms5611ErrorTone\" value=\"" + szMS5611ErrorToneHz + "\">Hz<BR>";
   szPageContent += "</fieldset><fieldset><legend>Miscellaneous</legend>";
   szPageContent += "Sleep Timeout [5 ... 30] <INPUT type=\"number\" name=\"sleepTimeout\" value=\"" + szSleepTimeoutMinutes + "\">min<BR>";
-  szPageContent += "Gyro Offset Limit [100 ... 500] <INPUT type=\"number\" name=\"gyroOffsetLimit\" value=\"" + szGyroOffsetLimit1000DPS + "\"><BR>";
+  szPageContent += "Gyro Offset Limit [25 ... 200] <INPUT type=\"number\" name=\"gyroOffsetLimit\" value=\"" + szGyroOffsetLimit1000DPS + "\"><BR>";
   szPageContent += "</fieldset><INPUT type = \"submit\" value = \"SEND\"> ";
   szPageContent += "</P></FORM><BR><a href=\"defaults\"><BUTTON>SET DEFAULTS</BUTTON></a></BODY></HTML>";
   }
