@@ -4,7 +4,7 @@ DIY friendly, cheap, fast and accurate audio-only variometer using widely availa
 Features :
 1. uses earthframe-z acceleration computed from MPU9250 data, and z altitude calculated from MS5611 barometric pressure, for a "zero-lag" variometer response
 2. zeroes beeps, for weak lift, indicated with short pulses and long intervals.
-3. climbtone beeps, for lift strong enough to try to turn to stay in the lift, indicated with longer beeps and shorter intervals.
+3. climbtone beeps, for lift strong enough that you should try to core the lift, indicated with longer beeps and shorter intervals.
 4. sinktone beeps, for sink rates significantly more than glider sink rate in still air, indicated with descending frequency long beeps.
 5. offscale tones generated for climbrates > +10m/s or sinkrates > -10m/s
 6. vario will automatically go into a low-power drain sleep state if there is no vertical motion for a while. This is in case you forgot to power off your vario after landing. Power off and on again to recover from this state.
@@ -12,7 +12,7 @@ Features :
 8. cheap !! Takes advantage of the popularity of the modules used in this project - you can source them for just a few $ (worldwide shipping included) on ebay and aliexpress.
 9. configurable via webpage form with the vario acting as a WiFi access point.
 
-Demo video at https://youtu.be/v9U-UKarfZY
+Demo video at https://youtu.be/v9U-UKarfZY . Note that for this demo, the vario was configured to show off the filter responsiveness, not for flying.
 
 Software development platform used : Arduino 1.8.2 on Windows 10 x64. See https://github.com/esp8266/Arduino for instructions on how to install ESP8266 SDK/libraries.
 
