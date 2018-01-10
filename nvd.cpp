@@ -115,11 +115,11 @@ void nvd_SaveCalibrationParams(int16_t axb, int16_t ayb, int16_t azb, int16_t gx
 	EEPROM.end();
 	}	
 	
-void nvd_SaveConfigurationParams(VARIO_PARAMS* pVario, ALARM_PARAMS* pFeedback, 
+void nvd_SaveConfigurationParams(VARIO_PARAMS* pVario, ALARM_PARAMS* pAlarm, 
 								KALMAN_FILTER_PARAMS* pKF, MISC_PARAMS* pMisc ) {
 	EEPROM.begin(NVD_SIZE_BYTES);
 	memcpy(&nvd.params.vario, pVario, sizeof(VARIO_PARAMS));
-	memcpy(&nvd.params.alarm, pFeedback, sizeof(ALARM_PARAMS));
+	memcpy(&nvd.params.alarm, pAlarm, sizeof(ALARM_PARAMS));
 	memcpy(&nvd.params.kf, pKF, sizeof(KALMAN_FILTER_PARAMS));
 	memcpy(&nvd.params.misc, pMisc, sizeof(MISC_PARAMS));
 	nvd_Commit();
