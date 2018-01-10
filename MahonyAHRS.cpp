@@ -1,5 +1,6 @@
 #include "MahonyAHRS.h"
 #include <math.h>
+#include "util.h"
 
 //#define twoKpDef	(2.0f * 0.5f)	// 2 * proportional gain
 #define twoKpDef  (2.0f * 5.0f) // 2 * proportional gain
@@ -12,34 +13,32 @@ volatile float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;					// quaternion of 
 volatile float integralFBx = 0.0f,  integralFBy = 0.0f, integralFBz = 0.0f;	// integral error terms scaled by Ki
 
 
-void imu_MahonyAHRSupdate(float dt, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
-	float recipNorm;
-    float q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;  
+void imu_MahonyAHRSupdate9DOF(int bUseAccel, int bUseMag, float dt, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
+	float invNorm;
+  float q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;  
 	float hx, hy, bx, bz;
 	float halfvx, halfvy, halfvz, halfwx, halfwy, halfwz;
 	float halfex, halfey, halfez;
 	float qa, qb, qc;
 
-	// Use IMU algorithm if magnetometer measurement invalid (avoids NaN in magnetometer normalisation)
-	if((mx == 0.0f) && (my == 0.0f) && (mz == 0.0f)) {
-		imu_MahonyAHRSupdateIMU(dt, gx, gy, gz, ax, ay, az);
+	// Use 6dof  algorithm if magnetometer measurement invalid
+	if(!bUseMag) {
+		imu_MahonyAHRSupdate6DOF(bUseAccel,dt, gx, gy, gz, ax, ay, az);
 		return;
 	}
 
-	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
-
+	if(bUseAccel) {
 		// Normalise accelerometer measurement
-		recipNorm = 1.0f/sqrt(ax * ax + ay * ay + az * az);
-		ax *= recipNorm;
-		ay *= recipNorm;
-		az *= recipNorm;     
+		invNorm = 1.0f/sqrt(ax * ax + ay * ay + az * az);
+		ax *= invNorm;
+		ay *= invNorm;
+		az *= invNorm;     
 
 		// Normalise magnetometer measurement
-		recipNorm = 1.0f/sqrt(mx * mx + my * my + mz * mz);
-		mx *= recipNorm;
-		my *= recipNorm;
-		mz *= recipNorm;   
+		invNorm = 1.0f/sqrt(mx * mx + my * my + mz * mz);
+		mx *= invNorm;
+		my *= invNorm;
+		mz *= invNorm;   
 
         // Auxiliary variables to avoid repeated arithmetic
         q0q0 = q0 * q0;
@@ -106,28 +105,27 @@ void imu_MahonyAHRSupdate(float dt, float gx, float gy, float gz, float ax, floa
 	q3 += (qa * gz + qb * gy - qc * gx); 
 	
 	// Normalise quaternion
-	recipNorm = 1.0f/sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-	q0 *= recipNorm;
-	q1 *= recipNorm;
-	q2 *= recipNorm;
-	q3 *= recipNorm;
+	invNorm = 1.0f/sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
+	q0 *= invNorm;
+	q1 *= invNorm;
+	q2 *= invNorm;
+	q3 *= invNorm;
 }
 
 
-void imu_MahonyAHRSupdateIMU(float dt, float gx, float gy, float gz, float ax, float ay, float az) {
-	float recipNorm;
+void imu_MahonyAHRSupdate6DOF(int bUseAccel, float dt, float gx, float gy, float gz, float ax, float ay, float az) {
+	float invNorm;
 	float halfvx, halfvy, halfvz;
 	float halfex, halfey, halfez;
 	float qa, qb, qc;
 
-	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
-	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
-
+	// Compute feedback only if accelerometer measurement valid )
+	if(bUseAccel) {
 		// Normalise accelerometer measurement
-		recipNorm = 1.0f/sqrt(ax * ax + ay * ay + az * az);
-		ax *= recipNorm;
-		ay *= recipNorm;
-		az *= recipNorm;        
+		invNorm = 1.0f/sqrt(ax * ax + ay * ay + az * az);
+		ax *= invNorm;
+		ay *= invNorm;
+		az *= invNorm;        
 
 		// Estimated direction of gravity and vector perpendicular to magnetic flux
 		halfvx = q1 * q3 - q0 * q2;
@@ -173,34 +171,29 @@ void imu_MahonyAHRSupdateIMU(float dt, float gx, float gy, float gz, float ax, f
 	q3 += (qa * gz + qb * gy - qc * gx); 
 	
 	// Normalise quaternion
-	recipNorm = 1.0f/sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-	q0 *= recipNorm;
-	q1 *= recipNorm;
-	q2 *= recipNorm;
-	q3 *= recipNorm;
+	invNorm = 1.0f/sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
+	q0 *= invNorm;
+	q1 *= invNorm;
+	q2 *= invNorm;
+	q3 *= invNorm;
 }
 
-
-
-
-
-
+// HN
 void imu_Quaternion2YawPitchRoll(float q0, float q1, float q2, float q3, float* pYawDeg, float* pPitchDeg, float* pRollDeg) {
-    float invnorm = 1.0f/sqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
-    q0 *= invnorm;
-    q1 *= invnorm;
-    q2 *= invnorm;
-    q3 *= invnorm;
+    float invNorm = 1.0f/sqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
+    q0 *= invNorm;
+    q1 *= invNorm;
+    q2 *= invNorm;
+    q3 *= invNorm;
 
-    *pYawDeg   = _180DIVPI * atan2(2.0f * (q1*q2 + q0*q3), q0*q0 + q1*q1 - q2*q2 - q3*q3);
-    *pPitchDeg = _180DIVPI * -asin(2.0f * (q1*q3 - q0*q2));
-    *pRollDeg  = _180DIVPI * atan2(2.0f * (q0*q1 + q2*q3), q0*q0 - q1*q1 - q2*q2 + q3*q3);
+    *pYawDeg   = _180_DIV_PI * atan2(2.0f * (q1*q2 + q0*q3), q0*q0 + q1*q1 - q2*q2 - q3*q3);
+    *pPitchDeg = _180_DIV_PI * -asin(2.0f * (q1*q3 - q0*q2));
+    *pRollDeg  = _180_DIV_PI * atan2(2.0f * (q0*q1 + q2*q3), q0*q0 - q1*q1 - q2*q2 + q3*q3);
     }
 
 float imu_GravityCompensatedAccel(float ax, float ay, float az, float q0, float q1, float q2, float q3) {
-    float acc = 2.0*(q1*q3 - q0*q2)*ax + 2.0f*(q0*q1 + q2*q3)*ay +
-        (q0*q0 - q1*q1 - q2*q2 + q3*q3)*az - 1.0f;
+    float acc = 2.0*(q1*q3 - q0*q2)*ax + 2.0f*(q0*q1 + q2*q3)*ay + (q0*q0 - q1*q1 - q2*q2 + q3*q3)*az - 1.0f;
     acc *= 0.98f; // in cm/s/s, assuming ax, ay, az are in milli-Gs
-	return acc;
+	  return acc;
     }
 

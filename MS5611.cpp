@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "Wire.h"
+#include "config.h"
 #include "MS5611.h"
 
 
@@ -11,7 +12,7 @@ MS5611::MS5611() {
 	}
 
 
-#if 0
+#if 0	
 
 #define MAX_TEST_SAMPLES    100
 extern char gszBuf[];
@@ -84,7 +85,7 @@ void MS5611::AveragedSample(int nSamples) {
 	celsiusSample_ = (tc >= 0 ?  (tc+50)/100 : (tc-50)/100);
 	paSample_ = (pAccum+nSamples/2)/nSamples;
 	zCmAvg_ = zCmSample_ = Pa2Cm(paSample_);
-#if 1
+#ifdef MS5611_DEBUG
    Serial.printf("Tavg : %dC\r\n",celsiusSample_);
    Serial.printf("Pavg : %dPa\r\n",(int)paSample_);
    Serial.printf("Zavg : %dcm\r\n",(int)zCmAvg_);
@@ -210,7 +211,7 @@ void MS5611::Reset() {
 	Wire.beginTransmission(MS5611_I2C_ADDRESS);  
 	Wire.write(MS5611_RESET);                
 	Wire.endTransmission();       
-	delay(5); // 3mS as per app note AN520	
+	delay(10); // 3mS as per app note AN520	
     }
    
 	
@@ -219,7 +220,9 @@ void MS5611::GetCalibrationCoefficients(void)  {
 		int promIndex = 2 + inx*2; 
 		cal_[inx] = (((uint16_t)prom_[promIndex])<<8) | (uint16_t)prom_[promIndex+1];
 		}
-    //Serial.printf("\r\nCalib Coeffs : %d %d %d %d %d %d\r\n",cal_[0],cal_[1],cal_[2],cal_[3],cal_[4],cal_[5]);
+#ifdef MS5611_DEBUG
+    Serial.printf("\r\nMS5611 Calibration Coeffs : %d %d %d %d %d %d\r\n",cal_[0],cal_[1],cal_[2],cal_[3],cal_[4],cal_[5]);
+#endif	 
     tref_ = ((int64_t)cal_[4])<<8;
     offT1_ = ((int64_t)cal_[1])<<16;
     sensT1_ = ((int64_t)cal_[0])<<15;		
@@ -252,7 +255,9 @@ uint8_t MS5611::CRC4(uint8_t prom[] ) {
 	 int cnt, nbit; 
 	 uint16_t crcRemainder; 
 	 uint8_t crcSave = prom[15]; // crc byte in PROM
-	 Serial.printf("PROM CRC = 0x%x\r\n", prom[15] & 0x0F);
+#ifdef MS5611_DEBUG
+	 Serial.printf("MS5611 PROM CRC = 0x%x\r\n", prom[15] & 0x0F);
+#endif	 
 	 crcRemainder = 0x0000;
 	 prom[15] = 0; //CRC byte is replaced by 0
 	 
@@ -269,6 +274,9 @@ uint8_t MS5611::CRC4(uint8_t prom[] ) {
 		}
 	 crcRemainder= (0x000F & (crcRemainder >> 12)); // final 4-bit reminder is CRC code
 	 prom[15] = crcSave; // restore the crc byte
+#ifdef MS5611_DEBUG
 	 Serial.printf("Calculated CRC = 0x%x\r\n",  crcRemainder ^ 0x0);
+#endif	 
 	 return (uint8_t)(crcRemainder ^ 0x0);
 	} 
+	

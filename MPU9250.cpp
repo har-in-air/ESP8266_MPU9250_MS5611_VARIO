@@ -1,23 +1,25 @@
 #include <Arduino.h>
 #include <Wire.h>
-#include "MPU9250.h"
-#include "VarioAudio.h"
 #include "config.h"
 #include "util.h"
+#include "audio.h"
+#include "MPU9250.h"
 
 
 MPU9250::MPU9250() {	
-	// valid for accelerometer full scale = +/- 2G
-    axBias_ = 105;
-    ayBias_ = -273;
-    azBias_ = -508;
-    aScale_ = 1.0f/MPU9250_2G_SENSITIVITY; // accelerometer values in milli-Gs
+	  // example accel biases valid for accelerometer full scale = +/- 4G
+    // actual values are computed on manual calibration and saved to flash 
+    // axBias = -80
+    // ayBias = -33
+    // azBias = -386
+    aScale_ = 1.0f/MPU9250_4G_SENSITIVITY; // accelerometer values in milli-Gs
     
-    // valid for gyro full scale = 500dps
-    gxBias_ = 42; 
-    gyBias_ = -18; 
-    gzBias_ = 73; 
-    gScale_  = 1.0f/MPU9250_500DPS_SENSITIVITY; // gyroscope values in deg/second
+    //example gyro biases for gyro full scale = 1000dps
+    // actual values are calibrated each time on power up or read from flash
+    //gxBias = 23;
+    //gyBias = -9;
+    //gzBias = 24;
+    gScale_  = 1.0f/MPU9250_1000DPS_SENSITIVITY; // gyroscope values in deg/second
 	}
 
 void MPU9250::GetAccelGyroData(float* pAccelData, float* pGyroData) {
@@ -33,9 +35,9 @@ void MPU9250::GetAccelGyroData(float* pAccelData, float* pGyroData) {
 	raw[0] = (int16_t)(((uint16_t)buf[8] << 8) | (uint16_t)buf[9]);
 	raw[1] = (int16_t)(((uint16_t)buf[10] << 8) | (uint16_t)buf[11]);
 	raw[2] = (int16_t)(((uint16_t)buf[12] << 8) | (uint16_t)buf[13]);	
-    pGyroData[0] = (float)(raw[0] - gxBias_) * gScale_;
-    pGyroData[1] = (float)(raw[1] - gyBias_) * gScale_;
-    pGyroData[2] = (float)(raw[2] - gzBias_) * gScale_;
+  pGyroData[0] = (float)(raw[0] - gxBias_) * gScale_;
+  pGyroData[1] = (float)(raw[1] - gyBias_) * gScale_;
+  pGyroData[2] = (float)(raw[2] - gzBias_) * gScale_;
 	}
 
 	
@@ -44,16 +46,19 @@ int MPU9250::CheckID(void) {
 	return (( whoami == 0x71) ? 1 : 0);
 	}
 	
-void MPU9250::SetCalibrationParams(NVD* pNVD) {
-	axBias_ = pNVD->params.axBias;
-	ayBias_ = pNVD->params.ayBias;
-	azBias_ = pNVD->params.azBias;
-	gxBias_ = pNVD->params.gxBias;
-	gyBias_ = pNVD->params.gyBias;
-	gzBias_ = pNVD->params.gzBias;
-	Serial.printf("Using saved calibration parameters :\r\n");
+void MPU9250::GetCalibrationParams(NVD* pNVD) {
+	axBias_ = pNVD->params.calib.axBias;
+	ayBias_ = pNVD->params.calib.ayBias;
+	azBias_ = pNVD->params.calib.azBias;
+	gxBias_ = pNVD->params.calib.gxBias;
+	gyBias_ = pNVD->params.calib.gyBias;
+	gzBias_ = pNVD->params.calib.gzBias;
+#ifdef MPU9250_DEBUG
+	Serial.println("Calibration parameters from NVD");
 	Serial.printf("Accel : axBias %d, ayBias %d, azBias %d\r\n",axBias_, ayBias_, azBias_);
 	Serial.printf("Gyro : gxBias %d, gyBias %d, gzBias %d\r\n",gxBias_, gyBias_, gzBias_);
+#endif
+	
 	}
 
 void MPU9250::Sleep(void) {
@@ -70,22 +75,23 @@ void MPU9250::ConfigAccelGyro(void) {
 	WriteByte(MPU9250_I2C_ADDRESS, PWR_MGMT_1, 0x01);
 	delay(200);
 
-	// fsync disabled, gyro bandwidth = 41Hz (with GYRO_CONFIG:fchoice = 11) 
-	WriteByte(MPU9250_I2C_ADDRESS, CONFIG, 0x03);
+	// fsync disabled, gyro bandwidth = 184Hz (with GYRO_CONFIG:fchoice_b = 00) 
+	WriteByte(MPU9250_I2C_ADDRESS, CONFIG, 0x01);
 
-	// output data rate = 1000Hz/5 = 200Hz
-	WriteByte(MPU9250_I2C_ADDRESS, SMPLRT_DIV, 0x04);
+	// output data rate = 1000Hz/(1+1) = 500Hz
+	WriteByte(MPU9250_I2C_ADDRESS, SMPLRT_DIV, 0x01);
 
-	// set gyro FS = 500dps, Fchoice = b11 (inverse of bits [1:0] = 00)
-	WriteByte(MPU9250_I2C_ADDRESS, GYRO_CONFIG, 0x08 );
+	// set gyro FS = 1000dps, fchoice_b = 00 
+  // bits[4:3] = 10 
+	WriteByte(MPU9250_I2C_ADDRESS, GYRO_CONFIG, 0x10 );
 
-	// Set accelerometer FS = +/-2G 
-	// for aFS = 2g, bits[4:3] = 00 
-	WriteByte(MPU9250_I2C_ADDRESS, ACCEL_CONFIG, 0x00);
+	// Set accelerometer FS = +/-4G 
+	// bits[4:3] = 01 
+	WriteByte(MPU9250_I2C_ADDRESS, ACCEL_CONFIG, 0x08);
 
-	// set accelerometer BW = 41Hz
-	// accel_fchoice = 1 (inverse of bit 3), a_dlpf_cfg bits[2:0] = 011
-	WriteByte(MPU9250_I2C_ADDRESS, ACCEL_CONFIG2, 0x03);
+	// set accelerometer BW = 184Hz
+	// accel_fchoiceb = 0, a_dlpf_cfg = 1
+	WriteByte(MPU9250_I2C_ADDRESS, ACCEL_CONFIG2, 0x01);
 
 	// interrupt is active high, push-pull, 50uS pulse
 	WriteByte(MPU9250_I2C_ADDRESS, INT_PIN_CFG, 0x10);
@@ -95,53 +101,50 @@ void MPU9250::ConfigAccelGyro(void) {
 	}
 
 
-// place unit so that the sensor board accelerometer +ve z axis points 
-// vertically downwards. This is where the sensor z axis sees a static 
-// acceleration of 1g. In this orientation the ax and ay values are 
+// place unit so that the sensor board accelerometer z axis points 
+// vertically downwards or upwards. This is where the sensor z axis sees a static 
+// acceleration of 1g / -1g. In this orientation the ax and ay values are 
 // the offsets for a 0g environment. 
 // Repeat this calibration a few times with the debug serial monitor to check the 
 // consistency of the calibration offsets. The board MUST be in a 1g static acceleration 
 // environment for this calibration, i.e. at rest, no vibrations etc.
 
-#define ACCEL_NUM_AVG_SAMPLES	10
-#define ACCEL_NUM_CALIB_TRIES	200
+#define ACCEL_NUM_AVG_SAMPLES	100
 
 void MPU9250::CalibrateAccel(){
 	uint8_t buf[6];
-	int16_t ax,ay,az,ax0g,ay0g;
-	int16_t az1g = 0;
+	int16_t x,y,z;
 	int32_t axAccum, ayAccum, azAccum;
+#ifdef MPU9250_DEBUG
 	Serial.printf("\r\n");
-	for (int cnt = 0; cnt < ACCEL_NUM_CALIB_TRIES; cnt++) {
-		axAccum = ayAccum = azAccum = 0;
-		for (int inx = 0; inx < ACCEL_NUM_AVG_SAMPLES; inx++){
-			ReadBytes(MPU9250_I2C_ADDRESS, ACCEL_XOUT_H, 6, buf);
-			ax = (int16_t)(((uint16_t)buf[0] << 8) | (uint16_t)buf[1]);
-			ay = (int16_t)(((uint16_t)buf[2] << 8) | (uint16_t)buf[3]);
-			az = (int16_t)(((uint16_t)buf[4] << 8) | (uint16_t)buf[5]);	
-			axAccum += (int32_t) ax;
-			ayAccum += (int32_t) ay;
-			azAccum += (int32_t) az;
-			delay(5);
-			}
-		ax = (int16_t)(axAccum / ACCEL_NUM_AVG_SAMPLES);
-		ay = (int16_t)(ayAccum / ACCEL_NUM_AVG_SAMPLES);
-		az = (int16_t)(azAccum / ACCEL_NUM_AVG_SAMPLES);
-		if (az > az1g) {
-			az1g = az;
-			ax0g = ax;
-			ay0g = ay;
-			}
-		Serial.printf("%03d/%3d : ax %d  ay %d  az %d\r\n",cnt, ACCEL_NUM_CALIB_TRIES, ax, ay, az);
+#endif
+	axAccum = ayAccum = azAccum = 0;
+	for (int inx = 0; inx < ACCEL_NUM_AVG_SAMPLES; inx++){
+		ReadBytes(MPU9250_I2C_ADDRESS, ACCEL_XOUT_H, 6, buf);
+		x = (int16_t)(((uint16_t)buf[0] << 8) | (uint16_t)buf[1]);
+		y = (int16_t)(((uint16_t)buf[2] << 8) | (uint16_t)buf[3]);
+		z = (int16_t)(((uint16_t)buf[4] << 8) | (uint16_t)buf[5]);	
+		axAccum += (int32_t) x;
+		ayAccum += (int32_t) y;
+		azAccum += (int32_t) z;
+		delay(2);
 		}
+	x = (int16_t)(axAccum / ACCEL_NUM_AVG_SAMPLES);
+	y = (int16_t)(ayAccum / ACCEL_NUM_AVG_SAMPLES);
+	z = (int16_t)(azAccum / ACCEL_NUM_AVG_SAMPLES);
+#ifdef MPU9250_DEBUG
+	Serial.printf("ax = %d  ay = %d  az = %d\r\n", x, y, z);
+#endif
 
-	axBias_ = ax0g;
-	ayBias_ = ay0g;
-    azBias_ = az1g - (int16_t)(1000.0f*MPU9250_2G_SENSITIVITY);
+	axBias_ = x;
+	ayBias_ = y;
+  azBias_ = z > 0 ? z - (int16_t)(1000.0f*MPU9250_4G_SENSITIVITY) : z + (int16_t)(1000.0f*MPU9250_4G_SENSITIVITY);
 
-    Serial.printf("axBias = %d\r\n", (int)axBias_);
-    Serial.printf("ayBias = %d\r\n", (int)ayBias_);
-    Serial.printf("azBias = %d\r\n", (int)azBias_);
+#ifdef MPU9250_DEBUG
+  Serial.printf("axBias = %d\r\n", (int)axBias_);
+  Serial.printf("ayBias = %d\r\n", (int)ayBias_);
+  Serial.printf("azBias = %d\r\n", (int)azBias_);
+#endif
 	}
 
 #define GYRO_NUM_CALIB_SAMPLES			50
@@ -162,17 +165,17 @@ int MPU9250::CalibrateGyro(void){
 			gy = (int16_t)(((uint16_t)buf[2] << 8) | (uint16_t)buf[3]);
 			gz = (int16_t)(((uint16_t)buf[4] << 8) | (uint16_t)buf[5]);	
 			// if a larger than expected gyro bias is measured, assume the unit was disturbed and try again after a short delay, upto 10 times
-			if ((ABS(gx) > GYRO_MAX_EXPECTED_OFFSET_500DPS) || (ABS(gy) > GYRO_MAX_EXPECTED_OFFSET_500DPS) || (ABS(gz) > GYRO_MAX_EXPECTED_OFFSET_500DPS)) {
+			if ((ABS(gx) > nvd.params.misc.gyroOffsetLimit1000DPS) || (ABS(gy) > nvd.params.misc.gyroOffsetLimit1000DPS) || (ABS(gz) > nvd.params.misc.gyroOffsetLimit1000DPS)) {
 				foundBadData = 1;
-				// generate a low tone pulse each time calibration fails. If you hear this when the unit is undisturbed,
-				// you probably need to increase GYRO_MAX_EXPECTED_OFFSET_500DPS. 
-				audio.GenerateTone(200, 300); 
+				// generate a low tone pulse each time calibration fails. If you hear this even when the unit is left undisturbed for calibration,
+				// the MPU9250 gyro has a high bias on one or more axes, you will need to increase the configuration parameter gyroOffsetLimit1000DPS. 
+				audio_GenerateTone(200, 300); 
 				break;
 				}  
 			gxAccum  += (int32_t) gx;
 			gyAccum  += (int32_t) gy;
 			gzAccum  += (int32_t) gz;
-			delay(5);
+			delay(2);
 			}
 		} while (foundBadData && (++numTries < 10));
 
@@ -183,11 +186,12 @@ int MPU9250::CalibrateGyro(void){
 		gyBias_ =  (int16_t)( gyAccum / GYRO_NUM_CALIB_SAMPLES);
 		gzBias_ =  (int16_t)( gzAccum / GYRO_NUM_CALIB_SAMPLES);		
 		}
-
+#ifdef MPU9250_DEBUG
 	Serial.printf("Num Tries = %d\r\n",numTries);
 	Serial.printf("gxBias = %d\r\n",gxBias_);
 	Serial.printf("gyBias = %d\r\n",gyBias_);
 	Serial.printf("gzBias = %d\r\n",gzBias_);
+#endif
 	return (foundBadData ? 0 : 1);
 	}
 

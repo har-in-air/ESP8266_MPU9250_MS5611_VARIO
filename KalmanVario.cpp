@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <math.h>
+#include "config.h"
+#include "util.h"
 #include "KalmanVario.h"
 
 
@@ -7,18 +9,21 @@
 // Tracks the position z and velocity v of an object moving in a straight line,
 // (here assumed to be vertical) that is perturbed by random accelerations.
 // sensor measurement of z is assumed to have constant measurement noise 
-// variance zVariance.
+// variance zMeasVariance.
 // This can be calculated offline for the specific sensor.
 // zInitial can be determined by averaging a few samples of the altitude measurement.
+// zAccelBiasVariance can be set low as it is not expected to drift much
 // vInitial and aBiasInitial can be set as 0.0
-// zAccelVariance can be specified with a large initial value to skew the 
-// filter towards the fresh data.
 
 
-void KalmanVario::Config(float zVariance, float zAccelVariance, float zAccelBiasVariance, float zInitial, float vInitial, float aBiasInitial) {
+void KalmanVario::Config(float zMeasVariance, float zAccelVariance, float zAccelBiasVariance, float zInitial, float vInitial, float aBiasInitial) {
+#ifdef KF_DEBUG
+  Serial.println("KalmanFilter config");
+	Serial.printf("kf zMeasVariance %d, zAccelVariance %d\r\n", (int)zMeasVariance, (int)zAccelVariance);
+#endif	
 	zAccelVariance_ = zAccelVariance;
     zAccelBiasVariance_ = zAccelBiasVariance;
-	zVariance_ = zVariance;
+	zMeasVariance_ = zMeasVariance;
 
 	z_ = zInitial;
 	v_ = vInitial;
@@ -90,7 +95,7 @@ void KalmanVario::Update(float z, float a, float dt, float* pZ, float* pV) {
 
 	// Error
 	float innov = z - z_; 
-	float sInv = 1.0f / (Pzz_ + zVariance_);  
+	float sInv = 1.0f / (Pzz_ + zMeasVariance_);  
 
     // Kalman gains
 	float kz = Pzz_ * sInv;  

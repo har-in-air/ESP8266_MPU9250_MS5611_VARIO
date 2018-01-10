@@ -2,72 +2,64 @@
 #define VARIO_AUDIO_H_
 
 
-// climb audio beep period and "duty cycle"
 typedef struct BEEP_ {
-    int periodTicks;
-    int endTick;
+    int periodTicks;  // on-time + off-time
+    int endTick; // on-time
 } BEEP;
 
+// clamp climbrate/sinkrate for audio feedback to +/- 10 m/s
 #define VARIO_MAX_CPS         1000
-
-// more audio discrimination for climbrates under this threshold
-#define VARIO_XOVER_CPS       300
-
-
 
 #define VARIO_STATE_SINK    	11
 #define VARIO_STATE_QUIET   	22
-#define VARIO_STATE_LIFTY_AIR	33
+#define VARIO_STATE_ZEROES		33
 #define VARIO_STATE_CLIMB   	44
-
-#define CLIMB_DISCRIMINATION_THRESHOLD 25
-
-
 
 class VarioAudio {
 	
 public :
 VarioAudio(){};
 
-void Config(int pinPWM);
-void VarioBeep(int32_t cps);
-void SetFrequency(int32_t freqHz);
-void GenerateTone( int32_t freqHz, int ms);
+void Config();
+void Beep(int32_t cps);
 
 private :
-int32_t discrimThreshold_;
-int32_t beepCps_;
-int32_t varioCps_;
-int32_t freqHz_;
-int32_t sinkToneCps_;
-int32_t climbToneCps_;
-int32_t liftyAirToneCps_;
+int32_t varioCps_; // internal state : current climb/sink rate
+int32_t freqHz_; // internal state : current frequency being generated
+// sinktone indicates sinking air, this is a warning tone
+int32_t sinkToneCps_; // threshold in cm per second
+// climbtone indicates lift is strong enough to try turning to stay in it
+int32_t climbToneCps_; // threshold in cm per second
+// zeroestone indicates weak lift, possibility of stronger lift/thermal nearby
+int32_t zeroesToneCps_; // threshold in cm per second
+// allocate roughly 1 decade (10:1) of speaker frequency bandwidth to climbrates below
+// crossoverCps, and 1 octave (2:1) of frequency bandwidth to climbrates above
+// crossoverCps. So if you are flying in strong conditions, increase crossoverCps.
+// If you are flying in weak conditions, decrease crossoverCps.
+int32_t crossoverCps_;
 
-int beepPeriodTicks_;
-int beepEndTick_;
-int tick_;
-int varioState_;
-
-int pinPWM_;
-
-int offScaleHiTone_[10]  = {2000,1000,2000,1000,2000,1000,2000,1000,2000,1000};
-int offScaleLoTone_[10]  = {650,600,550,500,450,400,350,300,250,200};
-// table for beep duration and repeat rate based on vertical speed
+int beepPeriodTicks_; // internal state : current beep interval in ticks
+int beepEndTick_; // internal state : current beep  on-time in ticks
+int tick_; // internal state : current tick ( 1 tick ~= 20mS)
+int varioState_; // internal state : climb/zeroes/quiet/sink
+// for offscale climbrates above +10m/s generate continuous warbling tone
+int offScaleHiTone_[8]  = {400,800,1200,1600,2000,1600,1200,800};
+// for offscale sinkrates below -10m/s generate continuous descending tone
+int offScaleLoTone_[8]  = {4000,3500,3000,2500,2000,1500,1000,500};
+// {beep_period, beep_on_time} based on vertical climbrate in 1m/s intervals
 BEEP beepTbl_[10] = {
-// repetition rate saturates at 8m/s
-{13,4},
-{11,4},
-{9,4},
-{8,4},
-{7,4},
+{15,10}, // 0m/s to +1m/s
+{13,9},  
+{11,8},
+{9,7},
+{8,6},
+{7,5},
 {6,4},
 {5,3},
 {4,2},
-{3,1},
-{3,1},
+{3,1}, // +9m/s to +10m/s
 };	
 };
 
-extern VarioAudio audio;
 
 #endif

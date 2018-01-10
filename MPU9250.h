@@ -41,7 +41,10 @@
 #define MPU9250_I2C_ADDRESS 	0x68  
 
 #define MPU9250_2G_SENSITIVITY 		16.384f 	// lsb per milli-g
+#define MPU9250_4G_SENSITIVITY     8.192f   // lsb per milli-g
+
 #define MPU9250_500DPS_SENSITIVITY	65.5f 		// lsb per deg/sec
+#define MPU9250_1000DPS_SENSITIVITY  32.8f     // lsb per deg/sec
 
 
 class MPU9250 {
@@ -57,7 +60,7 @@ private :
     void ConfigAccelGyro(void);
     int  CalibrateGyro(void);
     void CalibrateAccel(void);
-	void SetCalibrationParams(NVD* pNVD);
+	void GetCalibrationParams(NVD* pNVD);
 	void Sleep(void);
     void WriteByte(uint8_t deviceID, uint8_t addr, uint8_t val);
     uint8_t ReadByte(uint8_t deviceID, uint8_t addr);

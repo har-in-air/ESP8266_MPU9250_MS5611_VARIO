@@ -1,155 +1,144 @@
 #include <Arduino.h>
-#include "VarioAudio.h"
 #include "config.h"
+#include "nvd.h"
+#include "audio.h"
 #include "util.h"
+#include "VarioAudio.h"
 
 
-
-void VarioAudio::Config(int pinPWM) {
-	discrimThreshold_ 	=  CLIMB_DISCRIMINATION_THRESHOLD;
-	sinkToneCps_       	= SINK_THRESHOLD;
-	climbToneCps_      	= CLIMB_THRESHOLD;
-	liftyAirToneCps_   	= ZERO_THRESHOLD;
-    varioState_ 		= VARIO_STATE_QUIET;
+void VarioAudio::Config() {
+	sinkToneCps_       	=  (int32_t)nvd.params.vario.sinkThresholdCps;
+	climbToneCps_      	=  (int32_t)nvd.params.vario.climbThresholdCps;
+	zeroesToneCps_   	  =  (int32_t)nvd.params.vario.zeroThresholdCps;
+	crossoverCps_       =  (int32_t)nvd.params.vario.crossoverCps;
+#ifdef VARIO_DEBUG  
+  Serial.printf("\r\nVario Config\r\n");
+  Serial.printf("climbToneCps = %d\r\n", climbToneCps_);
+  Serial.printf("zeroesToneCps = %d\r\n", zeroesToneCps_);
+  Serial.printf("sinkToneCps = %d\r\n", sinkToneCps_);
+  Serial.printf("crossoverCps = %d\r\n", crossoverCps_);
+#endif  
+  varioState_ 		= VARIO_STATE_QUIET;
 	beepPeriodTicks_	= 0;
 	beepEndTick_ 		= 0;
-	beepCps_ 			= 0;
 	varioCps_ 			= 0;
 	freqHz_  			= 0;
-	pinPWM_ 			= pinPWM;
-	analogWrite(pinPWM_, 0);
-    }
+  }
 
-void VarioAudio::VarioBeep(int32_t nCps) {
-   int32_t newFreqHz = 0;
 
-   if (
-            (beepPeriodTicks_ <= 0) 
-       ||   ((tick_ >= beepPeriodTicks_/2) && (ABS(nCps - varioCps_) > discrimThreshold_))
-       ||   ((nCps >= climbToneCps_) && (varioCps_ < climbToneCps_)) 
-       ||   ((nCps >= liftyAirToneCps_) && (varioCps_ < liftyAirToneCps_)) 
-       ) {
-      varioCps_ = nCps;
-      // if sinking much faster than glider sink rate, generate continuous tone alarm
-      if (varioCps_ <= sinkToneCps_) {
-         varioState_ = VARIO_STATE_SINK;
-         beepCps_ = varioCps_;
-         if (beepCps_ < -VARIO_MAX_CPS) {
-			beepCps_ = -VARIO_MAX_CPS;
-			}
-		 tick_ = 0;
-		 if (beepCps_ == -VARIO_MAX_CPS) {
-    		beepPeriodTicks_ = 10;
-    		beepEndTick_ = 10;
+void VarioAudio::Beep(int32_t nCps) {
+  int32_t newFreqHz = 0;
+  // generate new beep/tone only if 
+  if (
+    // current beep/tone has ended, OR
+    (beepPeriodTicks_ <= 0)  ||
+#ifdef VARIO_INTERRUPT_BEEPS    
+    // at least half current beep/tone is over AND there is a significant change in climb/sink, OR
+    ((tick_ >= beepPeriodTicks_/2) && (ABS(nCps - varioCps_) > VARIO_DISCRIMINATION_THRESHOLD_CPS)) || 
+#endif    
+    // climb threshold exceeded, OR
+    ((nCps >= climbToneCps_) && (varioCps_ < climbToneCps_)) ||
+     // zeroes threshold exceeded 
+    ((nCps >= zeroesToneCps_) && (varioCps_ < zeroesToneCps_))
+     ) {
+    varioCps_ = nCps;
+    // if sinking significantly faster than glider sink rate in still air, generate warning sink tone
+    if (varioCps_ <= sinkToneCps_) {
+      varioState_ = VARIO_STATE_SINK;
+			tick_ = 0;
+      if (varioCps_ <= -VARIO_MAX_CPS) {
+        beepPeriodTicks_ = 8;
+        beepEndTick_ = 8;
     		newFreqHz = offScaleLoTone_[0];
     		freqHz_ = newFreqHz;
-            SetFrequency(freqHz_);
-            }
-         else {
-            beepPeriodTicks_ = 20;
-            beepEndTick_  = 18;
-            newFreqHz = VARIO_SINK_FREQHZ + ((sinkToneCps_ - beepCps_)*(VARIO_MAX_FREQHZ - VARIO_SINK_FREQHZ))/(VARIO_MAX_CPS+ sinkToneCps_);
-            CLAMP(newFreqHz,VARIO_MIN_FREQHZ,VARIO_MAX_FREQHZ);
-            freqHz_ = newFreqHz;
-            SetFrequency(freqHz_);
-         	}
+        audio_SetFrequency(freqHz_);
         }
-      //if climbing, generate beeps
       else {
-         if (varioCps_ >= climbToneCps_) {
-            varioState_ = VARIO_STATE_CLIMB;
-            beepCps_ = varioCps_;
-            if (beepCps_ > VARIO_MAX_CPS) {
-				beepCps_ = VARIO_MAX_CPS;
-				}
-		    tick_ = 0;
-			if (beepCps_ == VARIO_MAX_CPS) {
-    		    beepPeriodTicks_ = 10;
-    		    beepEndTick_ = 10;
-    		    newFreqHz = offScaleHiTone_[0];
-    		    freqHz_ = newFreqHz;
-                SetFrequency(freqHz_);
-                }
-            else {
-           	    int index = beepCps_/100;
-           	    if (index > 9) index = 9;
-           	    beepPeriodTicks_ = beepTbl_[index].periodTicks;
-           	    beepEndTick_ = beepTbl_[index].endTick;
-         	    if (beepCps_ > VARIO_XOVER_CPS) {
-                    newFreqHz = VARIO_XOVER_FREQHZ + ((beepCps_ - VARIO_XOVER_CPS)*(VARIO_MAX_FREQHZ - VARIO_XOVER_FREQHZ))/(VARIO_MAX_CPS - VARIO_XOVER_CPS);
-                    }
-                else {
-                    newFreqHz = VARIO_MIN_FREQHZ + (beepCps_*(VARIO_XOVER_FREQHZ - VARIO_MIN_FREQHZ))/VARIO_XOVER_CPS;
-                    }
-                CLAMP(newFreqHz,VARIO_MIN_FREQHZ,VARIO_MAX_FREQHZ);
-                freqHz_ = newFreqHz;
-                SetFrequency(freqHz_);
-                }
+        beepPeriodTicks_ = 40; // sink indicated with descending frequency beeps with long on-times
+        beepEndTick_  = 30;
+        // descending tone starts at higher frequency for higher sink rate
+        newFreqHz = VARIO_SPKR_MAX_FREQHZ/2 + ((varioCps_ + VARIO_MAX_CPS)*(VARIO_SPKR_MIN_FREQHZ + 600 - VARIO_SPKR_MAX_FREQHZ/2))/(sinkToneCps_ + VARIO_MAX_CPS);
+        CLAMP(newFreqHz, VARIO_SPKR_MIN_FREQHZ, VARIO_SPKR_MAX_FREQHZ);
+        freqHz_ = newFreqHz;
+        audio_SetFrequency(freqHz_);
+        }
+      }
+    //if climbing, generate beeps
+    else {
+      if (varioCps_ >= climbToneCps_) {
+        varioState_ = VARIO_STATE_CLIMB;
+        tick_ = 0;
+        if (varioCps_ >= VARIO_MAX_CPS) {
+          beepPeriodTicks_ = 8;
+          beepEndTick_ = 8;
+          newFreqHz = offScaleHiTone_[0];
+          freqHz_ = newFreqHz;
+          audio_SetFrequency(freqHz_);
+          }
+        else {
+          int index = varioCps_/100;
+          if (index > 9) index = 9;
+          beepPeriodTicks_ = beepTbl_[index].periodTicks;
+          beepEndTick_ = beepTbl_[index].endTick;
+          if (varioCps_ > crossoverCps_) {
+            newFreqHz = VARIO_CROSSOVER_FREQHZ + ((varioCps_ - crossoverCps_)*(VARIO_SPKR_MAX_FREQHZ - VARIO_CROSSOVER_FREQHZ))/(VARIO_MAX_CPS - crossoverCps_);
             }
-         else   // in "lifty-air" band, indicate with a ticking sound with longer interval
-         if (varioCps_ >= liftyAirToneCps_) {
-            varioState_ = VARIO_STATE_LIFTY_AIR;
-    		beepCps_ = varioCps_;
+          else {
+            newFreqHz = VARIO_SPKR_MIN_FREQHZ + ((varioCps_ - zeroesToneCps_)*(VARIO_CROSSOVER_FREQHZ - VARIO_SPKR_MIN_FREQHZ))/(crossoverCps_ - zeroesToneCps_);
+            }
+          CLAMP(newFreqHz, VARIO_SPKR_MIN_FREQHZ, VARIO_SPKR_MAX_FREQHZ);
+          freqHz_ = newFreqHz;
+          audio_SetFrequency(freqHz_);
+          }
+        }
+      else   // in "zeroes" band, indicate with a short pulse and long interval
+      if (varioCps_ >= zeroesToneCps_) {
+        varioState_ = VARIO_STATE_ZEROES;
     		tick_ = 0;
     		beepPeriodTicks_ = 30;
     		beepEndTick_ = 2;
-    		newFreqHz = VARIO_TICK_FREQHZ + (beepCps_*(VARIO_XOVER_FREQHZ - VARIO_TICK_FREQHZ))/VARIO_XOVER_CPS;
-            CLAMP(newFreqHz,VARIO_TICK_FREQHZ,VARIO_MAX_FREQHZ);
-            freqHz_ = newFreqHz;
-    		SetFrequency(freqHz_);  // higher frequency as you approach climb threshold
-            }
-
-      // not sinking enough to trigger alarm,  be quiet
-         else{
-            varioState_ = VARIO_STATE_QUIET;
-            tick_ = 0;
-            beepPeriodTicks_ = 0;
-            beepEndTick_  = 0;
-            freqHz_ = 0;
-            SetFrequency(freqHz_);
-            }
-         }
+    		newFreqHz = VARIO_SPKR_MIN_FREQHZ + ((varioCps_ - zeroesToneCps_)*(VARIO_CROSSOVER_FREQHZ - VARIO_SPKR_MIN_FREQHZ))/(crossoverCps_ - zeroesToneCps_);
+        CLAMP(newFreqHz, VARIO_SPKR_MIN_FREQHZ, VARIO_SPKR_MAX_FREQHZ);
+        freqHz_ = newFreqHz;
+        audio_SetFrequency(freqHz_);
+        }
+      // between zeroes threshold and sink threshold, chillout
+      else{
+        varioState_ = VARIO_STATE_QUIET;
+        tick_ = 0;
+        beepPeriodTicks_ = 0;
+        beepEndTick_  = 0;
+        freqHz_ = 0;
+        audio_SetFrequency(freqHz_);
+        }
       }
-   else{
-      tick_++;
-      beepPeriodTicks_--;
-      newFreqHz = freqHz_;
-      if (tick_ >= beepEndTick_){ // shut off tone
-         newFreqHz = 0;
-         }
-	  else
-	  if (beepCps_ == VARIO_MAX_CPS) {
-    	  newFreqHz = offScaleHiTone_[tick_];
-         }
-      else
-	  if (beepCps_ == -VARIO_MAX_CPS) {
-    	  newFreqHz = offScaleLoTone_[tick_];
-          }
-     else
-	 if (varioState_ == VARIO_STATE_SINK) {
-    	 newFreqHz = freqHz_ - 10;
-         }
-     if (newFreqHz != freqHz_) {
-         freqHz_ = newFreqHz;
-         SetFrequency(freqHz_);
-         }
-	  }
-   }
-
-void VarioAudio::SetFrequency(int32_t fHz) {
-	if (fHz ) {
-		analogWriteFreq(fHz);
-		analogWrite(pinPWM_, 512);
-		}
-	else {
-		analogWrite(pinPWM_, 0);
-		}
-	}
-
-
-void VarioAudio::GenerateTone(int32_t fHz, int ms) {
-    SetFrequency(fHz);
-    delay(ms);
-    SetFrequency(0);
     }
+  else { // still processing current beep/tone
+    tick_++;
+    beepPeriodTicks_--;
+    if (tick_ >= beepEndTick_){ // shut off climb beep after 'on' time ends
+      newFreqHz = 0;
+      }
+	  else
+	  if (varioCps_ >= VARIO_MAX_CPS) { // offscale climbrate (>= +10m/s) indicated with continuous warbling tone
+      newFreqHz = offScaleHiTone_[tick_];
+      }
+    else
+	  if (varioCps_ <= -VARIO_MAX_CPS) {  // offscale sink (<= -10m/s) indicated with continuous descending tone
+      newFreqHz = offScaleLoTone_[tick_];
+      }
+    else
+	  if (varioState_ == VARIO_STATE_SINK) {  // sink is indicated with a descending frequency beep
+      newFreqHz = freqHz_ - 20;
+      }
+    else {
+      newFreqHz = freqHz_; // no change   
+      }
+    if (newFreqHz != freqHz_) {
+      freqHz_ = newFreqHz;
+      audio_SetFrequency(freqHz_);
+      }
+	  }
+  }
+
 
