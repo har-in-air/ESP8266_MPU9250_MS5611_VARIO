@@ -86,24 +86,6 @@ void wificonfig_GeneratePage() {
   }
 
 void wificonfig_HandleRoot(){
-  /*
-  if (server.hasArg("varioClimbThreshold") || 
-		server.hasArg("varioZeroThreshold") || 
-		server.hasArg("varioSinkThreshold") || 
-		server.hasArg("varioCrossoverCps") ||
-    server.hasArg("kfAccelVar") ||
-    server.hasArg("kfZMeasVar") ||
-    server.hasArg("batteryTone") ||
-    server.hasArg("uncalibratedTone") ||
-    server.hasArg("calibratingTone") ||
-    server.hasArg("mpu9250ErrorTone") ||
-    server.hasArg("ms5611ErrorTone") ||
-    server.hasArg("sleepTimeout") ||
-    server.hasArg("gyroOffsetLimit") 
-		) {
-    wificonfig_HandleSubmit();
-    }
-    */
   wificonfig_HandleSubmit();
   wificonfig_GeneratePage();
   server.send(200, "text/html", szPageContent);
