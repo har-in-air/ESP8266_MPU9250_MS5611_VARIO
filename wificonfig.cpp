@@ -72,7 +72,7 @@ void wificonfig_GeneratePage() {
   szPageContent += "</fieldset><fieldset><legend>Kalman Filter</legend>";
   szPageContent += "Acceleration Variance [100 ... 10000] <INPUT type=\"number\" name=\"kfAccelVar\" value=\"" + szKFAccelVariance + "\"><BR>";
   szPageContent += "Altitude Noise Variance [100 ... 400] <INPUT type=\"number\" name=\"kfZMeasVar\" value=\"" + szKFZMeasVariance + "\"><BR>";
-  szPageContent += "</fieldset><fieldset><legend>Feedback</legend>";
+  szPageContent += "</fieldset><fieldset><legend>Alarms</legend>";
   szPageContent += "Battery Tone [200 ... 4000] <INPUT type=\"number\" name=\"batteryTone\" value=\"" + szBatteryToneHz + "\">Hz<BR>";
   szPageContent += "Uncalibrated Tone [200 ... 4000] <INPUT type=\"number\" name=\"uncalibratedTone\" value=\"" + szUncalibratedToneHz + "\">Hz<BR>";
   szPageContent += "Calibrating Tone [200 ... 4000] <INPUT type=\"number\" name=\"calibratingTone\" value=\"" + szCalibratingToneHz + "\">Hz<BR>";
