@@ -10,7 +10,7 @@ Features :
 6. vario will automatically go into a low-power drain sleep state if there is no vertical motion for a while. This is in case you forgot to power off your vario after landing. Power off and on again to recover from this state.
 7. easy to assemble using widely available, off-the-shelf modules
 8. cheap !! Takes advantage of the popularity of the modules used in this project - you can source them for just a few $ (worldwide shipping included) on ebay and aliexpress.
-9. configurable via webpage form with the vario acting as a WiFi access point.
+9. configurable via webpage form with the vario acting as a WiFi access point and HTTP web server.
 
 Demo video at https://youtu.be/v9U-UKarfZY . Note that for this demo, the vario was configured to show off the filter responsiveness, not for flying.
 
