@@ -9,7 +9,7 @@ void audio_Config(int pinPWM) {
   }
 
 void audio_SetFrequency(int32_t freqHz) {
-	if (freqHz ) {
+	if (freqHz > 0) {
 		analogWriteFreq(freqHz);
 		analogWrite(pinPWM_, 512); // generate square wave with frequency fHz and 50% duty cycle (512/1023 ~= 0.5)
 		}
