@@ -12,7 +12,6 @@ void VarioAudio::Config() {
 	zeroesToneCps_   	  =  (int32_t)nvd.params.vario.zeroThresholdCps;
 	crossoverCps_       =  (int32_t)nvd.params.vario.crossoverCps;
 #ifdef VARIO_DEBUG  
-  Serial.printf("\r\nVario Config\r\n");
   Serial.printf("climbToneCps = %d\r\n", climbToneCps_);
   Serial.printf("zeroesToneCps = %d\r\n", zeroesToneCps_);
   Serial.printf("sinkToneCps = %d\r\n", sinkToneCps_);

@@ -328,7 +328,7 @@ void wificonfig_SetupAPWebServer() {
   
   server.begin();
 #ifdef WEBCFG_DEBUG    
-  Serial.print("Connect to http://espvarioconfig.local or http://");Serial.println(myIP);
+  Serial.print("Open webpage http://espvarioconfig.local or http://");Serial.println(myIP);
 #endif
   }
 

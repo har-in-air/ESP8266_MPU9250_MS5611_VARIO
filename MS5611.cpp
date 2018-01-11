@@ -221,7 +221,7 @@ void MS5611::GetCalibrationCoefficients(void)  {
 		cal_[inx] = (((uint16_t)prom_[promIndex])<<8) | (uint16_t)prom_[promIndex+1];
 		}
 #ifdef MS5611_DEBUG
-    Serial.printf("\r\nMS5611 Calibration Coeffs : %d %d %d %d %d %d\r\n",cal_[0],cal_[1],cal_[2],cal_[3],cal_[4],cal_[5]);
+    Serial.printf("MS5611 Calibration Coeffs : %d %d %d %d %d %d\r\n",cal_[0],cal_[1],cal_[2],cal_[3],cal_[4],cal_[5]);
 #endif	 
     tref_ = ((int64_t)cal_[4])<<8;
     offT1_ = ((int64_t)cal_[1])<<16;

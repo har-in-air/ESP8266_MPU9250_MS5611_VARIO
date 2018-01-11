@@ -23,37 +23,36 @@ void nvd_Init(void)   {
 	
   if ((checkSum ^ nvd.params.checkSum) == 0xFFFF) {
 #ifdef NVD_DEBUG	
-		Serial.printf("nvd checkSum OK\r\n\r\n");
-		Serial.println("CALIBRATION");
+		Serial.printf("NVD checkSum OK\r\n\r\n");
+		Serial.println("ACCEL & GYRO CALIBRATION");
 		Serial.printf("axBias = %d\r\n", nvd.params.calib.axBias);
 		Serial.printf("ayBias = %d\r\n", nvd.params.calib.ayBias);
 		Serial.printf("azBias = %d\r\n", nvd.params.calib.azBias);
 		Serial.printf("gxBias = %d\r\n", nvd.params.calib.gxBias);
 		Serial.printf("gyBias = %d\r\n", nvd.params.calib.gyBias);
 		Serial.printf("gzBias = %d\r\n", nvd.params.calib.gzBias);
-    Serial.println("VARIO");
+    Serial.println("VARIO CONFIGURATION");
     Serial.printf("climbThresholdCps = %d\r\n", nvd.params.vario.climbThresholdCps);
     Serial.printf("zeroThresholdCps = %d\r\n", nvd.params.vario.zeroThresholdCps);
     Serial.printf("sinkThresholdCps = %d\r\n", nvd.params.vario.sinkThresholdCps);
     Serial.printf("crossoverCps = %d\r\n", nvd.params.vario.crossoverCps);
-    Serial.println("KALMAN FILTER");
+    Serial.println("KALMAN FILTER CONFIGURATION");
     Serial.printf("accelVariance = %d\r\n", nvd.params.kf.accelVariance);
     Serial.printf("zMeasVariance = %d\r\n", nvd.params.kf.zMeasVariance);
-    Serial.println("ALARMS");
+    Serial.println("ALARM CONFIGURATION");
     Serial.printf("batteryToneHz = %d\r\n", nvd.params.alarm.batteryToneHz);
     Serial.printf("uncalibratedToneHz = %d\r\n", nvd.params.alarm.uncalibratedToneHz);
     Serial.printf("calibratingToneHz = %d\r\n", nvd.params.alarm.calibratingToneHz);
     Serial.printf("mpu9250ErrorToneHz = %d\r\n", nvd.params.alarm.mpu9250ErrorToneHz);
     Serial.printf("ms5611ErrorToneHz = %d\r\n", nvd.params.alarm.ms5611ErrorToneHz);
-    Serial.println("MISCELLANEOUS");
+    Serial.println("MISCELLANEOUS CONFIGURATION");
     Serial.printf("gyroOffsetLimit1000DPS = %d\r\n", nvd.params.misc.gyroOffsetLimit1000DPS);
-    Serial.printf("sleepTimeoutMinutes = %d\r\n\r\n", nvd.params.misc.sleepTimeoutMinutes);
-    
+    Serial.printf("sleepTimeoutMinutes = %d\r\n", nvd.params.misc.sleepTimeoutMinutes);
 #endif
 		}
    else  {
 #ifdef NVD_DEBUG	
-		Serial.printf("### nvd BAD CHECKSUM, SETTING DEFAULTS ###\r\n");
+		Serial.println("ERROR!! NVD BAD CHECKSUM, SETTING DEFAULTS");
 #endif
 		nvd.params.calib.axBias = 0;
 		nvd.params.calib.ayBias = 0;

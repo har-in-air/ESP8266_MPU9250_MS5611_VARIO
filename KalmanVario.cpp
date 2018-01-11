@@ -18,8 +18,7 @@
 
 void KalmanVario::Config(float zMeasVariance, float zAccelVariance, float zAccelBiasVariance, float zInitial, float vInitial, float aBiasInitial) {
 #ifdef KF_DEBUG
-  Serial.println("KalmanFilter config");
-	Serial.printf("kf zMeasVariance %d, zAccelVariance %d\r\n", (int)zMeasVariance, (int)zAccelVariance);
+	Serial.printf("zMeasVariance %d\r\nzAccelVariance %d\r\n", (int)zMeasVariance, (int)zAccelVariance);
 #endif	
 	zAccelVariance_ = zAccelVariance;
     zAccelBiasVariance_ = zAccelBiasVariance;

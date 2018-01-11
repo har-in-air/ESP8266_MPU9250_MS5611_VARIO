@@ -115,9 +115,6 @@ void MPU9250::CalibrateAccel(){
 	uint8_t buf[6];
 	int16_t x,y,z;
 	int32_t axAccum, ayAccum, azAccum;
-#ifdef MPU9250_DEBUG
-	Serial.printf("\r\n");
-#endif
 	axAccum = ayAccum = azAccum = 0;
 	for (int inx = 0; inx < ACCEL_NUM_AVG_SAMPLES; inx++){
 		ReadBytes(MPU9250_I2C_ADDRESS, ACCEL_XOUT_H, 6, buf);

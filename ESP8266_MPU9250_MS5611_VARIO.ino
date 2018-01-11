@@ -126,7 +126,7 @@ void goToSleep() {
 void indicateUncalibratedAccelerometerGyro() {
 	for (int cnt = 0; cnt < 10; cnt++) {
 		audio_GenerateTone(nvd.params.alarm.uncalibratedToneHz,500); 
-		audio_GenerateTone(nvd.params.alarm.uncalibratedToneHz*10,500);
+		audio_GenerateTone(nvd.params.alarm.uncalibratedToneHz*2,500);
 		}
 	}
 
@@ -157,18 +157,21 @@ void indicateFaultMPU9250() {
 		}
 	}
 
-void setupApplication() {
+void setupVarioMode() {
   wificonfig_wifiOff(); // turn off radio to save power
   Wire.begin(pinSDA, pinSCL);
   Wire.setClock(400000); // set i2c clock frequency AFTER Wire.begin()
 
   int bv = battery_SampleVoltage();
 #ifdef MAIN_DEBUG   
-  Serial.printf("Battery voltage = %d.%dV\r\n", bv/10, bv%10 );
+  Serial.printf("\r\nBattery voltage = %d.%dV\r\n", bv/10, bv%10 );
 #endif
   battery_IndicateVoltage(bv);
   delay(1000);
   
+#ifdef MAIN_DEBUG   
+    Serial.println("\r\nChecking communication with MS5611");
+#endif
   if (!baro.ReadPROM()) {
 #ifdef MAIN_DEBUG   
     Serial.println("Bad CRC read from MS5611 calibration PROM");
@@ -177,7 +180,13 @@ void setupApplication() {
     indicateFaultMS5611(); 
     goToSleep();   // power-cycle to fix this, not reset button
     }
+#ifdef MAIN_DEBUG   
+    Serial.println("MS5611 OK");
+#endif
   
+#ifdef MAIN_DEBUG   
+    Serial.println("\r\nChecking communication with MPU9250");
+#endif
   if (!imu.CheckID()) {
 #ifdef MAIN_DEBUG   
     Serial.println("Error reading mpu9250 WHO_AM_I register");
@@ -186,13 +195,21 @@ void setupApplication() {
     indicateFaultMPU9250();
     goToSleep();   // power-cycle to fix this, not reset button
     }
-
-  // if we got this far, MPU9250 and MS5611 look OK
+#ifdef MAIN_DEBUG   
+    Serial.println("MPU9250 OK");
+#endif
+  
   if ((nvd.params.calib.axBias == 0) && (nvd.params.calib.ayBias == 0) && (nvd.params.calib.azBias == 0)) {
     // accelerometer is uncalibrated, indicate with series of alternating low/high tones
     // NOTE : accelerometer MUST be manually calibrated for the vario to function
     indicateUncalibratedAccelerometerGyro(); 
+#ifdef MAIN_DEBUG   
+    Serial.println("Error : uncalibrated accelerometer, manual calibration is now REQUIRED for vario operation !!");
+    Serial.println("When you hear the gyro calibration countdown, press the pgmconfcal button to force");    
+    Serial.println("accelerometer calibration as well as gyro calibration");    
+#endif    
     }
+    
   // load the accel & gyro calibration parameters from the non-volatile data structure
   imu.GetCalibrationParams(&nvd);
   
@@ -206,11 +223,11 @@ void setupApplication() {
   // configure MPU9250 to start generating gyro and accel data  
   imu.ConfigAccelGyro();
   
-  // Try to calibrate gyro each time on power up. If the unit is not at rest, give up
-  // and use the last saved gyro biases.
+  // Vario will attempt to calibrate gyro each time on power up. If the vario is disturbed, it will
+  // use the last saved gyro calibration values.
   // The software delays a few seconds so that the unit can be left undisturbed for gyro calibration.
-  // This delay is indicated with a series of 10 short beeps. While it is beeping, if you press and hold the
-  // pgm/calib/config button (GPIO0), the unit will calibrate the accelerometer first.
+  // This delay is indicated with a series of 10 short beeps. While it is beeping, if you press the
+  // pgmconfcal button, the unit will calibrate the accelerometer first and then the gyro.
   // As soon as you hear the long confirmation tone, release the button and
   // put the unit in accelerometer calibration position resting undisturbed on a horizontal surface 
   // with the accelerometer +z axis pointing vertically downwards. You will have some time 
@@ -218,9 +235,16 @@ void setupApplication() {
   // tone, save the calibration parameters to flash, and continue with normal vario operation
   
   boolean bCalibrateAccelerometer = false;
-  // short beeps for ~5 seconds
+  // short beeps for ~5 seconds, countdown to gyro calibration
+#ifdef MAIN_DEBUG
+  Serial.println("Counting down to gyro calibration");
+  Serial.println("Press the pgmconfcal button if accelerometer calibration is also required");
+#endif  
   for (int inx = 0; inx < 10; inx++) {
     delay(500); 
+#ifdef MAIN_DEBUG
+  Serial.println(10-inx);
+#endif  
     audio_GenerateTone(nvd.params.alarm.calibratingToneHz,50); 
     if (digitalRead(pinPgmConfCalBtn) == 0) {
        bCalibrateAccelerometer = true;
@@ -231,58 +255,79 @@ void setupApplication() {
     // acknowledge calibration button press with long tone
     audio_GenerateTone(nvd.params.alarm.calibratingToneHz, 3000);
 #ifdef MAIN_DEBUG   
-    Serial.println("Place unit on level surface with accelerometer z axis vertical and leave it undisturbed");
-    Serial.println("You have 10 seconds, counted down with short beeps");
+    Serial.println("Manual accelerometer calibration requested");
+    Serial.println("Place vario on a level surface with accelerometer z axis vertical and leave it undisturbed");
+    Serial.println("You have 10 seconds, counted down with rapid beeps");
 #endif
     for (int inx = 0; inx < 50; inx++) {
       delay(200); 
+#ifdef MAIN_DEBUG   
+  Serial.println(50-inx);
+#endif  
       audio_GenerateTone(nvd.params.alarm.calibratingToneHz,50);
       }
 #ifdef MAIN_DEBUG   
-    Serial.println("Calibrating accelerometer");
+    Serial.println("\r\nCalibrating accelerometer");
 #endif
     imu.CalibrateAccel();
+#ifdef MAIN_DEBUG   
+    Serial.println("Accelerometer calibration done");
+#endif
     nvd_SaveCalibrationParams(imu.axBias_,imu.ayBias_,imu.azBias_,imu.gxBias_,imu.gyBias_,imu.gzBias_);
     }
 
 #ifdef MAIN_DEBUG   
-    Serial.println("Calibrating gyro");
+    Serial.println("\r\nCalibrating gyro");
 #endif
   // normal power-on operation flow, always attempt to calibrate gyro. If calibration isn't possible because 
   // the unit is continuously disturbed (e.g. you turned on the unit while already flying), indicate this and
   // use the last saved gyro biases. Otherwise, save the new gyro biases to flash memory
   if (imu.CalibrateGyro()) {
 #ifdef MAIN_DEBUG   
-    Serial.println("gyro calibration OK");
+    Serial.println("Gyro calibration OK");
 #endif
     audio_GenerateTone(nvd.params.alarm.calibratingToneHz, 1000);
     nvd_SaveCalibrationParams(imu.axBias_,imu.ayBias_,imu.azBias_,imu.gxBias_,imu.gyBias_,imu.gzBias_);
     }
   else { 
 #ifdef MAIN_DEBUG   
-    Serial.println("gyro calibration failed");
+    Serial.println("Gyro calibration failed");
 #endif
     audio_GenerateTone(nvd.params.alarm.calibratingToneHz, 1000);
     delay(500);
     audio_GenerateTone(nvd.params.alarm.calibratingToneHz/2, 1000);
     }
     
-  delay(1000);      
+  delay(1000);  
+      
+#ifdef MAIN_DEBUG   
+    Serial.println("\r\nMS5611 config");
+#endif
   baro.Reset();
   baro.GetCalibrationCoefficients(); // load MS5611 factory programmed calibration data
   baro.AveragedSample(4); // get an estimate of starting altitude
   baro.InitializeSampleStateMachine(); // start the pressure & temperature sampling cycle
-  
+
+#ifdef MAIN_DEBUG   
+  Serial.println("\r\nKalmanFilter config");
+#endif  
   // initialize kalman filter with barometer estimated altitude, and climbrate = 0.0
   kf.Config((float)nvd.params.kf.zMeasVariance, (float)nvd.params.kf.accelVariance, KF_ACCELBIAS_VARIANCE, baro.zCmAvg_, 0.0f, 0.0f);
 
+#ifdef MAIN_DEBUG   
+  Serial.println("\r\nVario beeper config");
+#endif
   vario.Config();
+
   
   time_Init();
   zAccelAccumulator = 0.0f;
   kfTimeDeltaSecs = 0.0f;
   baroCounter = 0;
   sleepTimeoutSecs = 0;
+#ifdef MAIN_DEBUG   
+  Serial.println("\r\nStart vario");
+#endif
   }
 
   
@@ -295,27 +340,45 @@ void setup() {
   bWebConfigure = false;
   pinMode(pinPgmConfCalBtn, INPUT);
   audio_Config(pinAudio); 
-	delay(3000);
+	delay(1000);
 #ifdef MAIN_DEBUG    
-  Serial.println("Press and hold pgm/conf/cal button to put unit in web configuration mode");
+  Serial.println("To start web configuration mode, press and hold the pgmconfcal button");
+  Serial.println("until you hear a low-frequency tone start. Then release the button");
 #endif
-  delay(2000);
+  for (int cnt = 0; cnt < 4; cnt++) {
+#ifdef MAIN_DEBUG    
+    Serial.println(4-cnt);
+#endif
+    delay(1000);
+    }
   if (digitalRead(pinPgmConfCalBtn) == 0) {
     bWebConfigure = true;
+#ifdef MAIN_DEBUG    
+  Serial.println("Web configuration mode selected");
+#endif
     // 5 second long tone with low frequency to indicate unit is now in web server configuration mode.
     // You can release the button as soon as the tone starts.
-    // After you are done with web configuration, power-cycle the unit for normal application mode
+    // After you are done with web configuration, switch off the vario as the wifi radio
+    // consumes a lot of power.
     audio_GenerateTone(200, 5000);
     }
-    
+   else {
+#ifdef MAIN_DEBUG    
+  Serial.println("Normal vario mode");
+#endif        
+    }
+   
   // Read non-volatile data (calibration and configuration values) from ESP8266 flash
+#ifdef MAIN_DEBUG    
+  Serial.println("\r\nChecking non-volatile data (calibration and configuration)");  
+#endif
   nvd_Init();
 
   if (bWebConfigure == true) { 
     wificonfig_SetupAPWebServer(); 
     }
   else {
-    setupApplication();
+    setupVarioMode();
     }
 	}
 	
@@ -326,7 +389,7 @@ void loop(){
     wificonfig_HandleClient();
     }
   else { 
-    // normal application loop
+    // normal vario loop
 	  if ( drdyFlag == true ) { // 500Hz ODR => 2mS sample interval
 		  drdyFlag = false;
 		  time_Update();
