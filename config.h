@@ -8,17 +8,17 @@
 // audio tones. Between the sink threshold and the zero threshold,
 // the vario is quiet
 
-#define VARIO_CLIMB_THRESHOLD_CPS_DEFAULT  50
-#define VARIO_CLIMB_THRESHOLD_CPS_MIN   20
-#define VARIO_CLIMB_THRESHOLD_CPS_MAX   100
+#define VARIO_CLIMB_THRESHOLD_CPS_DEFAULT  	50
+#define VARIO_CLIMB_THRESHOLD_CPS_MIN   	20
+#define VARIO_CLIMB_THRESHOLD_CPS_MAX   	100
 
-#define VARIO_ZERO_THRESHOLD_CPS_DEFAULT  5
-#define VARIO_ZERO_THRESHOLD_CPS_MIN    -20
-#define VARIO_ZERO_THRESHOLD_CPS_MAX    20
+#define VARIO_ZERO_THRESHOLD_CPS_DEFAULT  	5
+#define VARIO_ZERO_THRESHOLD_CPS_MIN    	-20
+#define VARIO_ZERO_THRESHOLD_CPS_MAX    	20
 
-#define VARIO_SINK_THRESHOLD_CPS_DEFAULT  -200
-#define VARIO_SINK_THRESHOLD_CPS_MIN    -400
-#define VARIO_SINK_THRESHOLD_CPS_MAX    -100
+#define VARIO_SINK_THRESHOLD_CPS_DEFAULT  	-200
+#define VARIO_SINK_THRESHOLD_CPS_MIN    	-400
+#define VARIO_SINK_THRESHOLD_CPS_MAX    	-100
 
 
 // When generating climbtones, the vario allocates most of the speaker 
@@ -40,8 +40,8 @@
 
 // Sleep timeout. The vario will go into sleep mode
 // if it does not detect climb or sink rates more than
-// the specified threshold, for the specified minutes.
-// You can only exit the sleep mode by power cycling the unit.
+// SLEEP_THRESHOLD_CPS, for the specified minutes.
+// You can only exit  sleep mode by power cycling the unit.
 #define SLEEP_TIMEOUT_MINUTES_DEFAULT   15
 #define SLEEP_TIMEOUT_MINUTES_MIN       5
 #define SLEEP_TIMEOUT_MINUTES_MAX       30
@@ -60,7 +60,7 @@
 
 #define GYRO_OFFSET_LIMIT_1000DPS_DEFAULT   	50
 #define GYRO_OFFSET_LIMIT_1000DPS_MIN       	25
-#define GYRO_OFFSET_LIMIT_1000DPS_MAX		      200
+#define GYRO_OFFSET_LIMIT_1000DPS_MAX		    200
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -72,8 +72,8 @@
 
 // Three octaves (2:1) of frequency for climbrates below crossoverCps,
 // and one octave of frequency for climbrates above crossoverCps.
-// This gives you more frequency discrimination for climbrates below
-// crossoverCps
+// This gives you more perceived frequency discrimination for climbrates 
+// below crossoverCps
 #define VARIO_CROSSOVER_FREQHZ    	1600
 
 // uncomment this if you want the current beep/tone to be interrupted and
@@ -82,7 +82,7 @@
 // confusing/irritating if you are in choppy air
 //#define VARIO_INTERRUPT_BEEPS
 
-// this is the 'significant change' threshold that is checked when 
+// this is the 'significant change' threshold that is used when 
 // VARIO_INTERRUPT_BEEPS is enabled
 #define VARIO_DISCRIMINATION_THRESHOLD_CPS    25
 

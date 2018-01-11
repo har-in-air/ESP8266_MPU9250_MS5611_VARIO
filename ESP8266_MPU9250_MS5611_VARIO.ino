@@ -122,11 +122,13 @@ void goToSleep() {
 	
 // if imu calibration data in flash was never initialized or is corrupt, the accel 
 // and gyro biases are set to 0, and this uncalibrated state is indicated with a 
-// sequence of alternating low and high beeps for 10 seconds.
+// continuous sequence of alternating high and low beeps for 10 seconds.
+// !! You must manually calibrate the accelerometer if you hear this alarm, it is
+// !! required for normal vario operation.
 void indicateUncalibratedAccelerometerGyro() {
 	for (int cnt = 0; cnt < 10; cnt++) {
 		audio_GenerateTone(nvd.params.alarm.uncalibratedToneHz,500); 
-		audio_GenerateTone(nvd.params.alarm.uncalibratedToneHz*2,500);
+		audio_GenerateTone(nvd.params.alarm.uncalibratedToneHz/2,500);
 		}
 	}
 
@@ -368,7 +370,6 @@ void setup() {
 #endif        
     }
    
-  // Read non-volatile data (calibration and configuration values) from ESP8266 flash
 #ifdef MAIN_DEBUG    
   Serial.println("\r\nChecking non-volatile data (calibration and configuration)");  
 #endif
