@@ -342,7 +342,6 @@ void setup() {
   bWebConfigure = false;
   pinMode(pinPgmConfCalBtn, INPUT);
   audio_Config(pinAudio); 
-	delay(1000);
 #ifdef MAIN_DEBUG    
   Serial.println("To start web configuration mode, press and hold the pgmconfcal button");
   Serial.println("until you hear a low-frequency tone start. Then release the button");
