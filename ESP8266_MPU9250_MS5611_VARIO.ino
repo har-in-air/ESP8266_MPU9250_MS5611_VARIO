@@ -105,7 +105,7 @@ void time_Init() {
 
 inline void time_Update(){
 	timeNowUs = micros();
-	imuTimeDeltaUSecs = (timeNowUs - timePreviousUs);
+	imuTimeDeltaUSecs = timeNowUs > timePreviousUs ? (float)(timeNowUs - timePreviousUs) : 2000.0f; // if rollover use expected time difference
 	timePreviousUs = timeNowUs;
 	}
 	
@@ -202,8 +202,6 @@ void setupVarioMode() {
 #endif
   
   if ((nvd.params.calib.axBias == 0) && (nvd.params.calib.ayBias == 0) && (nvd.params.calib.azBias == 0)) {
-    // accelerometer is uncalibrated, indicate with series of alternating low/high tones
-    // NOTE : accelerometer MUST be manually calibrated for the vario to function
     indicateUncalibratedAccelerometerGyro(); 
 #ifdef MAIN_DEBUG   
     Serial.println("Error : uncalibrated accelerometer, manual calibration is now REQUIRED for vario operation !!");
@@ -237,7 +235,6 @@ void setupVarioMode() {
   // tone, save the calibration parameters to flash, and continue with normal vario operation
   
   boolean bCalibrateAccelerometer = false;
-  // short beeps for ~5 seconds, countdown to gyro calibration
 #ifdef MAIN_DEBUG
   Serial.println("Counting down to gyro calibration");
   Serial.println("Press the pgmconfcal button if accelerometer calibration is also required");
