@@ -14,8 +14,8 @@
 
 uint32_t 	timePreviousUs;
 uint32_t 	timeNowUs;
-float 		imuTimeDeltaSecs;
-float 		kfTimeDeltaSecs;
+float 		imuTimeDeltaUSecs; // time between imu samples, in microseconds
+float 		kfTimeDeltaUSecs; // time between kalman filter updates, in microseconds
 
 float accel[3]; // in milli-Gs
 float gyro[3];  // in degrees/second
@@ -105,7 +105,7 @@ void time_Init() {
 
 inline void time_Update(){
 	timeNowUs = micros();
-	imuTimeDeltaSecs = ((timeNowUs - timePreviousUs) / 1000000.0f);
+	imuTimeDeltaUSecs = (timeNowUs - timePreviousUs);
 	timePreviousUs = timeNowUs;
 	}
 	
@@ -324,7 +324,7 @@ void setupVarioMode() {
   
   time_Init();
   zAccelAccumulator = 0.0f;
-  kfTimeDeltaSecs = 0.0f;
+  kfTimeDeltaUSecs = 0.0f;
   baroCounter = 0;
   sleepTimeoutSecs = 0;
 #ifdef MAIN_DEBUG   
@@ -380,7 +380,7 @@ void setup() {
   else {
     setupVarioMode();
     }
-	}
+  }
 	
 
 void loop(){
@@ -410,23 +410,23 @@ void loop(){
       // Acceleration data is only used for orientation correction when the acceleration magnitude is between 0.7G and 1.3G
       float accelMagnitudeSquared = accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2];
       int bUseAccel = ((accelMagnitudeSquared > 490000.0f) && (accelMagnitudeSquared < 1690000.0f)) ? 1 : 0;
-		  imu_MahonyAHRSupdate6DOF(bUseAccel,imuTimeDeltaSecs, DEG_TO_RAD(gyro[0]), DEG_TO_RAD(gyro[1]), DEG_TO_RAD(gyro[2]), -accel[0], -accel[1], -accel[2]);
+		  imu_MahonyAHRSupdate6DOF(bUseAccel,imuTimeDeltaUSecs/1000000.0f, DEG_TO_RAD(gyro[0]), DEG_TO_RAD(gyro[1]), DEG_TO_RAD(gyro[2]), -accel[0], -accel[1], -accel[2]);
 		
 		  float gravityCompensatedAccel = imu_GravityCompensatedAccel(-accel[0], -accel[1], -accel[2], q0, q1, q2, q3);
 		  zAccelAccumulator += gravityCompensatedAccel; // accumulate one earth-z acceleration value  every 2mS
 
 		  baroCounter++;
-		  kfTimeDeltaSecs += imuTimeDeltaSecs;
+		  kfTimeDeltaUSecs += imuTimeDeltaUSecs;
 		  if (baroCounter >= 5) { // 5*2mS = 10mS elapsed, this is the sampling period for MS5611, 
 			  baroCounter = 0;    // alternating between pressure and temperature samples
         // one altitude sample is calculated for every new pair of pressure & temperature samples
 			  int zMeasurementAvailable = baro.SampleStateMachine(); 
 			  if ( zMeasurementAvailable ) { 
 				  float zAccelAverage = zAccelAccumulator / 10.0f; // average earth-z acceleration over the 20mS interval between z samples
-				  kf.Update(baro.zCmSample_, zAccelAverage, kfTimeDeltaSecs, &kfAltitudeCm, &kfClimbrateCps);
+				  kf.Update(baro.zCmSample_, zAccelAverage, kfTimeDeltaUSecs/1000000.0f, &kfAltitudeCm, &kfClimbrateCps);
           // reset acceleration accumulator and total time elapsed between kalman filter algorithm updates
 				  zAccelAccumulator = 0.0f;
-				  kfTimeDeltaSecs = 0.0f;
+				  kfTimeDeltaUSecs = 0.0f;
 				  int32_t audioCps =  kfClimbrateCps >= 0.0f ? (int32_t)(kfClimbrateCps+0.5f) : (int32_t)(kfClimbrateCps-0.5f);
           vario.Beep(audioCps);                
           if (ABS(audioCps) > SLEEP_THRESHOLD_CPS) { 
