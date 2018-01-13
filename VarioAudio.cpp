@@ -35,10 +35,8 @@ void VarioAudio::Beep(int32_t nCps) {
     // at least half current beep/tone is over AND there is a significant change in climb/sink, OR
     ((tick_ >= beepPeriodTicks_/2) && (ABS(nCps - varioCps_) > VARIO_DISCRIMINATION_THRESHOLD_CPS)) || 
 #endif    
-    // climb threshold exceeded, OR
-    ((nCps >= climbToneCps_) && (varioCps_ < climbToneCps_)) ||
-     // zeroes threshold exceeded 
-    ((nCps >= zeroesToneCps_) && (varioCps_ < zeroesToneCps_))
+    // climb threshold exceeded
+    ((nCps >= climbToneCps_) && (varioCps_ < climbToneCps_)) 
      ) {
     varioCps_ = nCps;
     // if sinking significantly faster than glider sink rate in still air, generate warning sink tone
