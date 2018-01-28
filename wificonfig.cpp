@@ -70,8 +70,8 @@ void wificonfig_GeneratePage() {
   szPageContent += "Sink Threshold [-400 ... -100] <INPUT type=\"number\" name=\"varioSinkThreshold\" value=\"" + szVarioSinkThresholdCps + "\">cm/s<BR>";
   szPageContent += "Crossover climbrate [300 ... 800] <INPUT type=\"number\" name=\"varioCrossoverCps\" value=\"" + szVarioCrossoverCps + "\">cm/s<BR>";
   szPageContent += "</fieldset><fieldset><legend>Kalman Filter</legend>";
-  szPageContent += "Acceleration Variance [100 ... 10000] <INPUT type=\"number\" name=\"kfAccelVar\" value=\"" + szKFAccelVariance + "\"><BR>";
-  szPageContent += "Altitude Noise Variance [100 ... 400] <INPUT type=\"number\" name=\"kfZMeasVar\" value=\"" + szKFZMeasVariance + "\"><BR>";
+  szPageContent += "Acceleration Variance [1 ... 100] <INPUT type=\"number\" name=\"kfAccelVar\" value=\"" + szKFAccelVariance + "\"><BR>";
+  szPageContent += "Altitude Noise Variance [100 ... 500] <INPUT type=\"number\" name=\"kfZMeasVar\" value=\"" + szKFZMeasVariance + "\"><BR>";
   szPageContent += "</fieldset><fieldset><legend>Alarms</legend>";
   szPageContent += "Battery Tone [200 ... 3200] <INPUT type=\"number\" name=\"batteryTone\" value=\"" + szBatteryToneHz + "\">Hz<BR>";
   szPageContent += "Uncalibrated Tone [200 ... 3200] <INPUT type=\"number\" name=\"uncalibratedTone\" value=\"" + szUncalibratedToneHz + "\">Hz<BR>";

@@ -29,7 +29,7 @@ typedef struct ALARM_PARAMS_ {
 } ALARM_PARAMS;
 
 typedef struct KALMAN_FILTER_PARAMS_ {
-	int16_t  accelVariance; // environmental acceleration disturbance variance
+	int16_t  accelVariance; // environmental acceleration disturbance variance, divided by 1000
 	int16_t  zMeasVariance; // z measurement noise variance
 } KALMAN_FILTER_PARAMS;
 

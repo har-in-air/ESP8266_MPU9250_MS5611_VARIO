@@ -311,7 +311,7 @@ void setupVarioMode() {
   Serial.println("\r\nKalmanFilter config");
 #endif  
   // initialize kalman filter with barometer estimated altitude, and climbrate = 0.0
-  kf.Config((float)nvd.params.kf.zMeasVariance, (float)nvd.params.kf.accelVariance, KF_ACCELBIAS_VARIANCE, baro.zCmAvg_, 0.0f, 0.0f);
+  kf.Config((float)nvd.params.kf.zMeasVariance, 1000.0f*(float)nvd.params.kf.accelVariance, KF_ACCELBIAS_VARIANCE, baro.zCmAvg_, 0.0f, 0.0f);
 
 #ifdef MAIN_DEBUG   
   Serial.println("\r\nVario beeper config");

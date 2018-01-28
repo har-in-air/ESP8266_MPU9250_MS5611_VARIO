@@ -30,13 +30,13 @@
 #define VARIO_CROSSOVER_CPS_MAX         800
 
 // Kalman filter configuration
-#define KF_ACCEL_VARIANCE_DEFAULT     1000
-#define KF_ACCEL_VARIANCE_MIN       100
-#define KF_ACCEL_VARIANCE_MAX       10000
+#define KF_ACCEL_VARIANCE_DEFAULT     50
+#define KF_ACCEL_VARIANCE_MIN         1
+#define KF_ACCEL_VARIANCE_MAX         100
 
 #define KF_ZMEAS_VARIANCE_DEFAULT    300
 #define KF_ZMEAS_VARIANCE_MIN        100
-#define KF_ZMEAS_VARIANCE_MAX        400
+#define KF_ZMEAS_VARIANCE_MAX        500
 
 // Sleep timeout. The vario will go into sleep mode
 // if it does not detect climb or sink rates more than
