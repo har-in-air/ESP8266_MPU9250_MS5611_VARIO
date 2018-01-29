@@ -10,6 +10,7 @@
 #include "cct.h"
 #include "nvd.h"
 #include "audio.h"
+#include "ringbuf.h"
 #include "wificonfig.h"
 
 uint32_t 	timePreviousUs;
@@ -21,7 +22,6 @@ float accel[3]; // in milli-Gs
 float gyro[3];  // in degrees/second
 float kfAltitudeCm = 0.0f;
 float kfClimbrateCps  = 0.0f;
-float zAccelAccumulator = 0.0f;
 
 int pinSDA 		  = 4;
 int pinSCL 		  = 5;
@@ -320,10 +320,12 @@ void setupVarioMode() {
 
   
   time_Init();
-  zAccelAccumulator = 0.0f;
   kfTimeDeltaUSecs = 0.0f;
   baroCounter = 0;
   sleepTimeoutSecs = 0;
+  // circular buffer of latest z-earth acceleration samples, needed to ensure we use the acceleration samples that are
+  // in sync with the pressure-derived altitude samples
+  ringbuf_Init(); 
 #ifdef MAIN_DEBUG   
   Serial.println("\r\nStart vario");
 #endif
@@ -404,13 +406,13 @@ void loop(){
 		  // gxned = gx, gyned = gy, gzned = gz (clockwise rotations about the axis must result in +ve readings on the axis)
 		  // axned = -ax, ayned = -ay, azned = -az (when the axis points down, axis reading must be +ve)
 		  // The AHRS algorithm expects rotation rates in radians/second
-      // Acceleration data is only used for orientation correction when the acceleration magnitude is between 0.7G and 1.3G
+      // Acceleration data is only used for orientation correction when the acceleration magnitude is between 0.75G and 1.25G
       float accelMagnitudeSquared = accel[0]*accel[0] + accel[1]*accel[1] + accel[2]*accel[2];
-      int bUseAccel = ((accelMagnitudeSquared > 490000.0f) && (accelMagnitudeSquared < 1690000.0f)) ? 1 : 0;
+      int bUseAccel = ((accelMagnitudeSquared > 562500.0f) && (accelMagnitudeSquared < 1562500.0f)) ? 1 : 0;
 		  imu_MahonyAHRSupdate6DOF(bUseAccel,imuTimeDeltaUSecs/1000000.0f, DEG_TO_RAD(gyro[0]), DEG_TO_RAD(gyro[1]), DEG_TO_RAD(gyro[2]), -accel[0], -accel[1], -accel[2]);
 		
 		  float gravityCompensatedAccel = imu_GravityCompensatedAccel(-accel[0], -accel[1], -accel[2], q0, q1, q2, q3);
-		  zAccelAccumulator += gravityCompensatedAccel; // accumulate one earth-z acceleration value  every 2mS
+      ringbuf_AddSample(gravityCompensatedAccel);  
 
 		  baroCounter++;
 		  kfTimeDeltaUSecs += imuTimeDeltaUSecs;
@@ -419,10 +421,12 @@ void loop(){
         // one altitude sample is calculated for every new pair of pressure & temperature samples
 			  int zMeasurementAvailable = baro.SampleStateMachine(); 
 			  if ( zMeasurementAvailable ) { 
-				  float zAccelAverage = zAccelAccumulator / 10.0f; // average earth-z acceleration over the 20mS interval between z samples
+          // average earth-z acceleration over the 20mS interval between z samples
+          // z sample is from when pressure conversion was triggered, not read (i.e. 10mS ago). So we need to average
+          // the acceleration samples from the 20mS interval before that
+				  float zAccelAverage = ringbuf_AverageOldestSamples(10); 
 				  kf.Update(baro.zCmSample_, zAccelAverage, kfTimeDeltaUSecs/1000000.0f, &kfAltitudeCm, &kfClimbrateCps);
-          // reset acceleration accumulator and total time elapsed between kalman filter algorithm updates
-				  zAccelAccumulator = 0.0f;
+          // reset time elapsed between kalman filter algorithm updates
 				  kfTimeDeltaUSecs = 0.0f;
 				  int32_t audioCps =  kfClimbrateCps >= 0.0f ? (int32_t)(kfClimbrateCps+0.5f) : (int32_t)(kfClimbrateCps-0.5f);
           vario.Beep(audioCps);                
