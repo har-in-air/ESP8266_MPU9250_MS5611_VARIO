@@ -18,6 +18,7 @@ Demo video at https://youtu.be/v9U-UKarfZY . Note that for this demo, the vario 
 Software development platform used : Arduino 1.8.2 on Windows 10 x64. See https://github.com/esp8266/Arduino for instructions on how to install ESP8266 SDK/libraries.
 
 You can find a comprehensive guide to the ESP8266 at https://tttapa.github.io/ESP8266/Chap01%20-%20ESP8266.html
+
 For a demonstration of the effectiveness of the Kalman sensor fusion algorithm used in this vario, check out the /docs
 directory in the project https://github.com/har-in-air/ESP32_IMU_BARO_GPS_LOGGER
 
