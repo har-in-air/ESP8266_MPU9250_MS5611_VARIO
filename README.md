@@ -11,12 +11,13 @@ Features :
 7. easy to assemble using widely available, off-the-shelf modules
 8. cheap !! Takes advantage of the popularity of the modules used in this project - you can source them for just a few $ (worldwide shipping included) on ebay and aliexpress.
 9. configurable via webpage form with the vario acting as a WiFi access point and HTTP web server.
+10. 3D printer files for an appropriate case for the vario can be found at https://github.com/antoine5974/esp8266-vario-3D-printed-casing, thanks to Antoine Lomberty.
 
 Demo video at https://youtu.be/v9U-UKarfZY . Note that for this demo, the vario was configured to show off the filter responsiveness, not for flying.
 
 Software development platform used : Arduino 1.8.2 on Windows 10 x64. See https://github.com/esp8266/Arduino for instructions on how to install ESP8266 SDK/libraries.
 
-You can find a comprehensive beginner's guide to the ESP8266 at https://tttapa.github.io/ESP8266/Chap01%20-%20ESP8266.html
+You can find a comprehensive guide to the ESP8266 at https://tttapa.github.io/ESP8266/Chap01%20-%20ESP8266.html
 
 ESP8285 ESP-M2 module purchased from Aliexpress for US$1.80 including shipping. It was advertised as an ESP-M1 with 16Mbit flash, but the silkscreen on the back of the board is marked "ESP-M2 E". And the ESP8285 has an 8Mbit (1Mbyte) flash. You can use any ESP8266 module that brings out the gpio pins that are used in this project, e.g. the ESP-12E or ESP-12F. 
 
