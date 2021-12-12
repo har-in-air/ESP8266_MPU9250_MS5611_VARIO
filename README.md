@@ -1,5 +1,9 @@
 # ESP8266_MPU9250_MS5611_VARIO
+
 DIY friendly, cheap, fast and accurate audio-only variometer using widely available off-the-shelf modules, so minimal assembly required.
+
+WARNING : This project is no longer being maintained. The [ESP8266_BLUETOOTH_AUDIO_VARIO](https://github.com/har-in-air/ESP8266_BLUETOOTH_AUDIO_VARIO) project has
+up-to-date algorithm and feature implementations.
 
 Features :
 1. uses earthframe-z acceleration computed from MPU9250 data, and z altitude calculated from MS5611 barometric pressure, for a "zero-lag" variometer response
